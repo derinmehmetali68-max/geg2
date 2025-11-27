@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Ana Sayfa - Kütüphane Yönetim Sistemi{% endblock %}
+
+{% block content %}
+<!-- Tema Modu Butonu kaldırıldı -->
+<div class="container-fluid py-4">
+    <!-- Hoşgeldin Mesajı -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h4 class="card-title">
+                        <i class="bi bi-house"></i> 
+                        {% if current_user.is_authenticated %}
+                            Hoş geldiniz, {{ current_user.username }}!
+                        {% else %}
+                            Okul Kütüphanesi Yönetim Sistemine Hoş Geldiniz!
+                        {% endif %}
+                    </h4>
+                    <p class="card-text mb-0">{{ get_setting('library_name', 'Kütüphanemiz') }} - Bilgiye ulaşmanın en kolay yolu</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modern İstatistik Kartları -->
+    <div class="row mb-5">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stat-card border-0 h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon-wrapper mb-3">
+                        <i class="bi bi-book stat-icon text-primary"></i>
+                    </div>
+                    <div class="stat-value text-primary">{{ distinct_books }}</div>
+                    <div class="stat-label">Farklı Kitap</div>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="bi bi-arrow-up-right me-1"></i>
+                        Toplam {{ total_books }} adet
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stat-card border-0 h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon-wrapper mb-3">
+                        <i class="bi bi-people stat-icon text-success"></i>
+                    </div>
+                    <div class="stat-value text-success">{{ total_members }}</div>
+                    <div class="stat-label">Kayıtlı Üye</div>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="bi bi-person-check me-1"></i>
+                        Aktif kullanıcı
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stat-card border-0 h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon-wrapper mb-3">
+                        <i class="bi bi-arrow-left-right stat-icon text-warning"></i>
+                    </div>
+                    <div class="stat-value text-warning">{{ borrowed_books }}</div>
+                    <div class="stat-label">Ödünç Kitap</div>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="bi bi-clock me-1"></i>
+                        Şu anda
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stat-card border-0 h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon-wrapper mb-3">
+                        <i class="bi bi-check-circle stat-icon text-info"></i>
+                    </div>
+                    <div class="stat-value text-info">{{ available_books }}</div>
+                    <div class="stat-label">Mevcut Kitap</div>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="bi bi-bookmark-check me-1"></i>
+                        Ödünç alınabilir
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hızlı İşlemler ve Bilgiler -->
+    <div class="row">
+        <!-- Modern Hızlı İşlemler Kartı -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card border-0 h-100">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning-fill text-warning me-2"></i>
+                        Hızlı İşlemler
+                    </h5>
+                </div>
+                <div class="card-body pt-3">
+                    <div class="d-grid gap-3">
+                        {% if current_user.is_authenticated %}
+                            {% if current_user.role in ['admin', 'librarian'] %}
+                                <a href="{{ url_for('transactions') }}" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-arrow-left-right me-2"></i>
+                                    Ödünç Ver / İade Al
+                                </a>
+                                <a href="{{ url_for('books') }}" class="btn btn-success">
+                                    <i class="bi bi-plus-circle me-2"></i>
+                                    Yeni Kitap Ekle
+                                </a>
+                                <a href="{{ url_for('members') }}" class="btn btn-info">
+                                    <i class="bi bi-person-plus me-2"></i>
+                                    Yeni Üye Ekle
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('my_books') }}" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-book me-2"></i>
+                                    Kitaplarım
+                                </a>
+                                <a href="{{ url_for('books') }}" class="btn btn-info">
+                                    <i class="bi bi-search me-2"></i>
+                                    Kitap Ara
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                Giriş Yap
+                            </a>
+                            <a href="{{ url_for('register') }}" class="btn btn-success">
+                                <i class="bi bi-person-plus me-2"></i>
+                                Üye Ol
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-search me-2"></i>
+                            Gelişmiş Arama
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {# Online Ödünç Alma ve Mobil QR Tarayıcı kartları kaldırıldı: sadece Kiosk kullanılacak #}
+        
+        <!-- En Çok Okunan Kitaplar -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-trophy"></i> En Popüler Kitaplar
+                </div>
+                <div class="card-body">
+                    {% if popular_books %}
+                        <div class="list-group list-group-flush">
+                            {% for book in popular_books[:5] %}
+                                <a href="{{ url_for('book_detail', isbn=book.isbn) }}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0 text-truncate">{{ book.title }}</h6>
+                                            <small class="text-muted">{{ book.authors }}</small>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">{{ book.total_borrow_count }}</span>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">Henüz veri yok</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sistem Bilgileri -->
+    <div class="row">
+        <!-- Sistem Bilgileri -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-info-circle"></i> Sistem Durumu
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="bi bi-calendar-check text-success"></i>
+                            <strong>Bugünkü İşlem:</strong> {{ today_transactions }}
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-exclamation-triangle text-danger"></i>
+                            <strong>Geciken Kitap:</strong> {{ overdue_books }}
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-bookmark text-info"></i>
+                            <strong>Aktif Rezervasyon:</strong> {{ active_reservations }}
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-people text-primary"></i>
+                            <strong>Toplam Kullanıcı:</strong> {{ total_users }}
+                        </li>
+                    </ul>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                        <hr>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-speedometer2"></i> Kontrol Paneline Git
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Son Aktiviteler (Sadece yöneticiler için) -->
+    {% if current_user.is_authenticated and current_user.role in ['admin', 'librarian'] %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-clock-history"></i> Son Aktiviteler
+                </div>
+                <div class="card-body">
+                    {% if recent_activities %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Zaman</th>
+                                        <th>Kullanıcı</th>
+                                        <th>İşlem</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for activity in recent_activities[:10] %}
+                                        <tr>
+                                            <td>{{ activity.timestamp|timeago }}</td>
+                                            <td>{{ activity.user }}</td>
+                                            <td>
+                                                <i class="bi bi-{{ activity.icon }}"></i> 
+                                                {{ activity.action }}
+                                            </td>
+                                            <td>{{ activity.details or '-' }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">Henüz aktivite kaydı yok</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

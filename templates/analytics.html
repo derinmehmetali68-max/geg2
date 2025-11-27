@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Analitik Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">📊 Analitik Dashboard</h1>
+        <div class="btn-toolbar">
+            <button class="btn btn-sm btn-outline-secondary me-2" onclick="refreshData()">
+                <i class="bi bi-arrow-clockwise"></i> Yenile
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportReport()">
+                <i class="bi bi-download"></i> Rapor İndir
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-primary border-4 shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">Toplam Kitap</div>
+                            <div class="h5 mb-0 fw-bold">{{ total_books }}</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-book-half fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-success border-4 shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">Toplam Üye</div>
+                            <div class="h5 mb-0 fw-bold">{{ total_members }}</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-people fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-info border-4 shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="text-xs fw-bold text-info text-uppercase mb-1">Aktif Ödünç</div>
+                            <div class="h5 mb-0 fw-bold">{{ active_transactions }}</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-arrow-left-right fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-warning border-4 shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">Son 30 Gün</div>
+                            <div class="h5 mb-0 fw-bold">{{ recent_transactions }}</div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-graph-up fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">📈 Ödünç Alma Trendi</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="borrowTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">📚 Kategori Dağılımı</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popüler Kitaplar -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">🔥 En Popüler Kitaplar</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Sıra</th>
+                                    <th>Kitap</th>
+                                    <th>Yazar</th>
+                                    <th>Ödünç</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for book in popular_books[:10] %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ book.title[:30] }}{% if book.title|length > 30 %}...{% endif %}</td>
+                                    <td>{{ book.authors[:20] }}{% if book.authors|length > 20 %}...{% endif %}</td>
+                                    <td><span class="badge bg-primary">{{ book.total_borrow_count or 0 }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">⚡ Sistem Durumu</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="text-success">
+                                <i class="bi bi-check-circle fs-1"></i>
+                            </div>
+                            <small>Veritabanı</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="text-success">
+                                <i class="bi bi-wifi fs-1"></i>
+                            </div>
+                            <small>Bağlantı</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-info">
+                                <i class="bi bi-cpu fs-1"></i>
+                            </div>
+                            <small>Performans</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-warning">
+                                <i class="bi bi-hdd fs-1"></i>
+                            </div>
+                            <small>Depolama</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Trend Chart
+    const trendCtx = document.getElementById('borrowTrendChart').getContext('2d');
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'],
+            datasets: [{
+                label: 'Ödünç Alınan Kitaplar',
+                data: [65, 59, 80, 81, 56, 55],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // Category Chart
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for category, count in categories.items() %}'{{ category }}',{% endfor %}],
+            datasets: [{
+                data: [{% for category, count in categories.items() %}{{ count }},{% endfor %}],
+                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40']
+            }]
+        },
+        options: { responsive: true }
+    });
+});
+
+function refreshData() { location.reload(); }
+function exportReport() { window.open('/api/reports/export?type=analytics', '_blank'); }
+</script>
+{% endblock %} 

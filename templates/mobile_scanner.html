@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Mobil QR Scanner{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📱 QR Kod Tarayıcı</h5>
+                </div>
+                <div class="card-body">
+                    <div id="qr-reader" style="width: 100%; min-height: 300px; border: 2px dashed #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #f8f9fa;">
+                        <div class="text-center text-muted">
+                            <i class="bi bi-camera fs-1"></i>
+                            <p>QR Kod taramak için "Başlat" butonuna tıklayın</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <button id="start-scanner" class="btn btn-success me-2">
+                            <i class="bi bi-camera"></i> Taramayı Başlat
+                        </button>
+                        <button id="stop-scanner" class="btn btn-danger" style="display: none;">
+                            <i class="bi bi-stop"></i> Durdur
+                        </button>
+                    </div>
+                    
+                    <div id="scan-result" class="mt-4" style="display: none;">
+                        <div class="alert alert-success">
+                            <h6>✅ QR Kod Tarandı!</h6>
+                            <p id="scan-text" class="mb-2"></p>
+                            <button id="process-scan" class="btn btn-primary btn-sm me-2">İşle</button>
+                            <button id="scan-again" class="btn btn-outline-secondary btn-sm">Tekrar Tara</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6>📝 Manuel ISBN Girişi</h6>
+                        <div class="input-group">
+                            <input type="text" id="manual-isbn" class="form-control" placeholder="ISBN numarasını girin">
+                            <button class="btn btn-outline-primary" onclick="processManualInput()">
+                                <i class="bi bi-search"></i> Ara
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+let html5QrCode = null;
+let isScanning = false;
+
+document.getElementById('start-scanner').addEventListener('click', startScanning);
+document.getElementById('stop-scanner').addEventListener('click', stopScanning);
+document.getElementById('scan-again').addEventListener('click', scanAgain);
+document.getElementById('process-scan').addEventListener('click', processScan);
+
+function startScanning() {
+    html5QrCode = new Html5Qrcode("qr-reader");
+    
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        onScanFailure
+    ).then(() => {
+        isScanning = true;
+        document.getElementById('start-scanner').style.display = 'none';
+        document.getElementById('stop-scanner').style.display = 'inline-block';
+    }).catch(err => {
+        console.error('Scanner hatası:', err);
+        alert('QR Scanner başlatılamadı. Kamera izni gerekli.');
+    });
+}
+
+function stopScanning() {
+    if (html5QrCode && isScanning) {
+        html5QrCode.stop().then(() => {
+            isScanning = false;
+            document.getElementById('start-scanner').style.display = 'inline-block';
+            document.getElementById('stop-scanner').style.display = 'none';
+        });
+    }
+}
+
+function onScanSuccess(decodedText) {
+    if ('vibrate' in navigator) {
+        navigator.vibrate(200);
+    }
+    
+    document.getElementById('scan-text').textContent = decodedText;
+    document.getElementById('scan-result').style.display = 'block';
+    stopScanning();
+}
+
+function onScanFailure(error) {
+    // Silent
+}
+
+function scanAgain() {
+    document.getElementById('scan-result').style.display = 'none';
+    startScanning();
+}
+
+function processScan() {
+    const scannedText = document.getElementById('scan-text').textContent;
+    processScannedData(scannedText);
+}
+
+function processScannedData(data) {
+    if (isISBN(data)) {
+        window.location.href = `/book/${data}`;
+    } else {
+        alert('QR kod işlendi: ' + data);
+    }
+}
+
+function processManualInput() {
+    const isbn = document.getElementById('manual-isbn').value.trim();
+    if (isbn) {
+        processScannedData(isbn);
+    }
+}
+
+function isISBN(text) {
+    const cleanText = text.replace(/[^0-9X]/g, '');
+    return cleanText.length === 10 || cleanText.length === 13;
+}
+</script>
+{% endblock %} 

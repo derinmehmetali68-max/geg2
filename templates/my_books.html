@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Kitaplarım{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-book"></i> Kitaplarım
+            </h2>
+            
+            <!-- Aktif Ödünçler -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bookmark-check"></i> Şu Anda Ödünç Aldıklarım
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if current_books %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Kitap</th>
+                                    <th>Yazar</th>
+                                    <th>Ödünç Tarihi</th>
+                                    <th>Son Teslim Tarihi</th>
+                                    <th>Kalan Gün</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in current_books %}
+                                {% set transaction = item.transaction %}
+                                {% set book = item.book %}
+                                {% set days_left = item.days_left %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('book_detail', isbn=book.isbn) }}" class="text-decoration-none">
+                                            {{ book.title }}
+                                        </a>
+                                    </td>
+                                    <td>{{ book.authors }}</td>
+                                    <td>{{ transaction.borrow_date }}</td>
+                                    <td>{{ transaction.due_date }}</td>
+                                    <td>
+                                        {% if days_left > 0 %}
+                                        <span class="badge bg-{{ 'success' if days_left > 3 else 'warning' }}">
+                                            {{ days_left }} gün
+                                        </span>
+                                        {% elif days_left == 0 %}
+                                        <span class="badge bg-warning">Bugün</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">{{ -days_left }} gün gecikmiş</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if days_left < 0 %}
+                                        <span class="text-danger">
+                                            <i class="bi bi-exclamation-circle"></i> Gecikmiş
+                                        </span>
+                                        {% elif days_left <= 3 %}
+                                        <span class="text-warning">
+                                            <i class="bi bi-clock"></i> Yaklaşıyor
+                                        </span>
+                                        {% else %}
+                                        <span class="text-success">
+                                            <i class="bi bi-check-circle"></i> Normal
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.can_renew %}
+                                        <button class="btn btn-sm btn-outline-primary" onclick="renewBook({{ transaction.id }})" title="Süre Uzat">
+                                            <i class="bi bi-arrow-clockwise"></i> Süre Uzat
+                                        </button>
+                                        {% else %}
+                                        <span class="text-muted small" title="Uzatma hakkı doldu">
+                                            <i class="bi bi-x-circle"></i> Uzatma hakkı doldu
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Hatırlatma:</strong> Kitapları zamanında iade etmeyi unutmayın. Geciken her gün için ceza uygulanmaktadır.
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i><br>
+                        Şu anda ödünç aldığınız kitap bulunmuyor.
+                    </p>
+                    <div class="text-center">
+                        <a href="{{ url_for('books') }}" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Kitap Ara
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Geçmiş -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Ödünç Geçmişim
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if history %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Kitap</th>
+                                    <th>Yazar</th>
+                                    <th>Ödünç Tarihi</th>
+                                    <th>İade Tarihi</th>
+                                    <th>Süre</th>
+                                    <th>Değerlendirme</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction, book in history %}
+                                {% set borrow_date = transaction.borrow_date|strptime('%Y-%m-%d') %}
+                                {% set return_date = transaction.return_date|strptime('%Y-%m-%d') %}
+                                {% set duration = (return_date - borrow_date).days %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('book_detail', isbn=book.isbn) }}" class="text-decoration-none">
+                                            {{ book.title }}
+                                        </a>
+                                    </td>
+                                    <td>{{ book.authors }}</td>
+                                    <td>{{ transaction.borrow_date }}</td>
+                                    <td>
+                                        {{ transaction.return_date }}
+                                        {% if transaction.return_date > transaction.due_date %}
+                                        <span class="badge bg-danger">Geç</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ duration }} gün</td>
+                                    <td>
+                                        <a href="{{ url_for('book_detail', isbn=book.isbn) }}#reviews" class="btn btn-sm btn-outline-warning">
+                                            <i class="bi bi-star"></i> Değerlendir
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- İstatistikler -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Okuma İstatistikleri</h6>
+                                    <canvas id="readingChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>En Çok Okuduğum Kategoriler</h6>
+                                    <canvas id="categoryChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        Henüz ödünç geçmişiniz bulunmuyor.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Süre uzatma fonksiyonu
+async function renewBook(transactionId) {
+    if (confirm('Bu kitabın ödünç süresini uzatmak istiyor musunuz?')) {
+        try {
+            console.log('Uzatma isteği gönderiliyor, Transaction ID:', transactionId);
+            
+            const response = await fetch(`/api/transactions/${transactionId}/renew`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    alert('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+                    window.location.href = '/login';
+                    return;
+                } else if (response.status === 403) {
+                    alert('Bu işlem için yetkiniz yok.');
+                    return;
+                } else if (response.status === 404) {
+                    alert('İşlem bulunamadı.');
+                    return;
+                }
+            }
+            
+            const result = await response.json();
+            console.log('API Response:', result);
+            
+            if (result.success) {
+                alert(result.message || 'Süre başarıyla uzatıldı!');
+                location.reload();
+            } else {
+                alert(result.message || 'Uzatma işlemi başarısız');
+            }
+        } catch (error) {
+            console.error('Uzatma hatası:', error);
+            alert('Bir hata oluştu: ' + error.message);
+        }
+    }
+}
+
+// Okuma istatistikleri grafiği
+{% if history %}
+const monthlyData = {};
+{% for transaction, book in history %}
+    const month = '{{ transaction.return_date[:7] }}';
+    monthlyData[month] = (monthlyData[month] || 0) + 1;
+{% endfor %}
+
+const months = Object.keys(monthlyData).sort();
+const counts = months.map(m => monthlyData[m]);
+
+const ctx1 = document.getElementById('readingChart').getContext('2d');
+new Chart(ctx1, {
+    type: 'line',
+    data: {
+        labels: months,
+        datasets: [{
+            label: 'Okunan Kitap Sayısı',
+            data: counts,
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Kategori dağılımı grafiği (simülasyon - gerçek veri için backend'den çekilmeli)
+const ctx2 = document.getElementById('categoryChart').getContext('2d');
+new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+        labels: ['Roman', 'Bilim', 'Tarih', 'Edebiyat', 'Diğer'],
+        datasets: [{
+            data: [30, 20, 15, 25, 10],
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+
+<style>
+canvas {
+    max-height: 200px;
+}
+</style>
+{% endblock %}

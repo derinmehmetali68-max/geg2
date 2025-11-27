@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Cezalarım{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-exclamation-triangle"></i> Cezalarım
+            </h2>
+            
+            <!-- Özet Kartları -->
+            <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">Ödenmemiş Cezalar</h6>
+                                    <h3 class="mb-0">{{ fines|length }} ceza</h3>
+                                </div>
+                                <i class="bi bi-cash-stack" style="font-size: 2rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">Ödenmiş Cezalar</h6>
+                                    <h3 class="mb-0">{{ fines|selectattr("0.status", "equalto", "paid")|list|length }} ceza</h3>
+                                </div>
+                                <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">Toplam Ceza Sayısı</h6>
+                                    <h3 class="mb-0">{{ fines|length }}</h3>
+                                </div>
+                                <i class="bi bi-receipt" style="font-size: 2rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ceza Listesi -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul"></i> Ceza Detayları
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if fines %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Kitap</th>
+                                    <th>Tür</th>
+                                    <th>Durum</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fine, transaction, book in fines %}
+                                <tr>
+                                    <td>{{ fine.created_date.strftime('%d.%m.%Y') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('book_detail', isbn=book.isbn) }}" class="text-decoration-none">
+                                            {{ book.title }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if fine.reason == 'late_return' %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-clock"></i> Geç İade
+                                        </span>
+                                        {% elif fine.reason == 'damaged' %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-exclamation-triangle"></i> Hasar
+                                        </span>
+                                        {% elif fine.reason == 'lost' %}
+                                        <span class="badge bg-dark">
+                                            <i class="bi bi-x-circle"></i> Kayıp
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ fine.reason }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if fine.status == 'unpaid' %}
+                                        <span class="badge bg-danger">Aktif</span>
+                                        {% elif fine.status == 'paid' %}
+                                        <span class="badge bg-success">Pasif</span>
+                                        {% elif fine.status == 'waived' %}
+                                        <span class="badge bg-info">Affedildi</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info" onclick="showFineDetails({{ fine.id }})">
+                                            <i class="bi bi-info-circle"></i> Detay
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if fines|length > 0 %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Dikkat:</strong> Cezanız bulunmaktadır. Cezalarınızı ödemediğiniz sürece yeni kitap ödünç alamazsınız.
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-emoji-smile" style="font-size: 3rem;"></i><br>
+                        Harika! Hiç cezanız bulunmuyor.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ceza Detay Modal -->
+<div class="modal fade" id="fineDetailModal" tabindex="-1" aria-labelledby="fineDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fineDetailModalLabel">Ceza Detayları</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="fineDetailContent">
+                <!-- Detaylar buraya yüklenecek -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Ceza detaylarını göster
+function showFineDetails(fineId) {
+    // Burada API'den ceza detayları çekilebilir
+    const modal = new bootstrap.Modal(document.getElementById('fineDetailModal'));
+    modal.show();
+}
+</script>
+
+<style>
+canvas {
+    max-height: 250px;
+}
+</style>
+{% endblock %}

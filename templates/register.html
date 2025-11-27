@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Kayıt Ol - Kütüphane Yönetim Sistemi{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-person-plus" style="font-size: 3rem; color: var(--primary-color);"></i>
+                        <h3 class="mt-2">Yeni Hesap Oluştur</h3>
+                        <p class="text-muted">Kütüphane sistemine kayıt olun</p>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('register') }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Kullanıcı Adı *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="username" name="username" required autofocus>
+                            </div>
+                            <small class="form-text text-muted">Giriş yaparken kullanacağınız ad</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">E-posta Adresi *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <small class="form-text text-muted">Bildirimler için kullanılacak</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Şifre *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <small class="form-text text-muted">En az 6 karakter olmalıdır</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Şifre Tekrar *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <small>
+                                <i class="bi bi-info-circle"></i> 
+                                Kayıt olduktan sonra kütüphane görevlisi tarafından üyeliğiniz onaylanacaktır.
+                            </small>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Kayıt Ol
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <p class="text-center mb-0">
+                        Zaten hesabınız var mı? 
+                        <a href="{{ url_for('login') }}" class="text-decoration-none">Giriş Yapın</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Şifre kontrol
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = this.value;
+    
+    if (password !== confirmPassword) {
+        this.setCustomValidity('Şifreler eşleşmiyor');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+
+// Şifre uzunluk kontrolü
+document.getElementById('password').addEventListener('input', function() {
+    if (this.value.length < 6) {
+        this.setCustomValidity('Şifre en az 6 karakter olmalıdır');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+</script>
+{% endblock %}

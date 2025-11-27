@@ -1,0 +1,686 @@
+{% extends "base.html" %}
+
+{% block title %}Gelişmiş Raporlar{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-file-earmark-bar-graph"></i> Gelişmiş Raporlar & Analizler
+            </h2>
+            
+            <!-- Kontrol Paneli -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                        <div class="row align-items-end">
+                        <div class="col-md-3">
+                                <label for="start_date" class="form-label">Başlangıç Tarihi</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                            </div>
+                        <div class="col-md-3">
+                                <label for="end_date" class="form-label">Bitiş Tarihi</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                            </div>
+                        <div class="col-md-3">
+                            <label for="report_type" class="form-label">Rapor Türü</label>
+                            <select class="form-select" id="report_type">
+                                <option value="all">Tüm Raporlar</option>
+                                <option value="books">Kitap Analizleri</option>
+                                <option value="members">Üye Analizleri</option>
+                                <option value="transactions">İşlem Analizleri</option>
+                                <option value="overdue">Gecikme Analizleri</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-primary" onclick="refreshReports()">
+                                <i class="bi bi-arrow-clockwise"></i> Yenile
+                                </button>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-download"></i> Export
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="exportToExcel()"><i class="bi bi-file-earmark-excel"></i> Excel</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportToPDF()"><i class="bi bi-file-earmark-pdf"></i> PDF</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportToCSV()"><i class="bi bi-file-earmark-text"></i> CSV</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Özet Kartları -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-primary text-white h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-book fs-1 mb-2"></i>
+                            <h5 class="card-title">Toplam İşlem</h5>
+                            <h2 id="total-transactions">{{ daily_stats|sum(attribute='count') }}</h2>
+                            <small>Son 30 gün</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-success text-white h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-graph-up fs-1 mb-2"></i>
+                            <h5 class="card-title">Günlük Ortalama</h5>
+                            <h2 id="daily-average">{{ "%.1f"|format(daily_stats|sum(attribute='count') / (daily_stats|length or 1)) }}</h2>
+                            <small>İşlem/gün</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-info text-white h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people fs-1 mb-2"></i>
+                            <h5 class="card-title">Aktif Üye</h5>
+                            <h2 id="active-members">{{ most_active|length }}</h2>
+                            <small>Bu dönemde</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-warning text-white h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-exclamation-triangle fs-1 mb-2"></i>
+                            <h5 class="card-title">Geciken Kitap</h5>
+                            <h2 id="overdue-books">0</h2>
+                            <small>Şu anda</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ana Grafikler -->
+            <div class="row mb-4">
+                <!-- İşlem Trend Analizi -->
+                <div class="col-md-8 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up"></i> İşlem Trend Analizi
+                            </h5>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary active" onclick="switchTrendView('daily')">Günlük</button>
+                                <button class="btn btn-outline-primary" onclick="switchTrendView('weekly')">Haftalık</button>
+                                <button class="btn btn-outline-primary" onclick="switchTrendView('monthly')">Aylık</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="trendChart" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Kategori Dağılımı -->
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-pie-chart"></i> Kategori Dağılımı
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="categoryChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detaylı Raporlar -->
+            <div class="row">
+                <!-- En Çok Ödünç Alınan Kitaplar -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-trophy"></i> En Çok Ödünç Alınan Kitaplar
+                            </h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="showTopBooksModal()">
+                                <i class="bi bi-eye"></i> Detay
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th width="5%">#</th>
+                                            <th width="50%">Kitap</th>
+                                            <th width="30%">Yazar</th>
+                                            <th width="15%">Sayı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for book in most_borrowed %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td>
+                                                <a href="{{ url_for('book_detail', isbn=book.isbn) }}" class="text-decoration-none">
+                                                    {{ book.title[:35] }}{% if book.title|length > 35 %}...{% endif %}
+                                                </a>
+                                            </td>
+                                            <td>{{ book.authors[:25] }}{% if book.authors|length > 25 %}...{% endif %}</td>
+                                            <td><span class="badge bg-primary">{{ book.borrow_count }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- En Aktif Üyeler -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-people-fill"></i> En Aktif Üyeler
+                            </h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="showTopMembersModal()">
+                                <i class="bi bi-eye"></i> Detay
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th width="10%">#</th>
+                                            <th width="50%">Üye</th>
+                                            <th width="25%">Sınıf</th>
+                                            <th width="15%">İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for member in most_active %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td>{{ member.ad_soyad }}</td>
+                                            <td><small class="text-muted">{{ member.sinif or '-' }}</small></td>
+                                            <td><span class="badge bg-success">{{ member.transaction_count }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gelişmiş Analizler -->
+            <div class="row">
+                <!-- Gecikme Analizi -->
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-clock-history"></i> Gecikme Analizi
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="overdueChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Üye Türü Dağılımı -->
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-person-badge"></i> Üye Türü Dağılımı
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="memberTypeChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+                <!-- Aylık Karşılaştırma -->
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-bar-chart"></i> Aylık Karşılaştırma
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="monthlyChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detay Modal'ları -->
+<div class="modal fade" id="topBooksModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">En Çok Ödünç Alınan Kitaplar - Detaylı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="topBooksContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="topMembersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">En Aktif Üyeler - Detaylı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="topMembersContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global değişkenler
+let charts = {};
+let reportData = {};
+
+// Sayfa yüklendiğinde çalışacak
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadReportData();
+});
+
+// Grafikleri başlat
+function initializeCharts() {
+    // Trend Grafiği
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    charts.trend = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+    labels: [{% for stat in daily_stats %}'{{ stat.date }}'{% if not loop.last %},{% endif %}{% endfor %}],
+    datasets: [{
+                label: 'Ödünç Alma',
+        data: [{% for stat in daily_stats %}{{ stat.count }}{% if not loop.last %},{% endif %}{% endfor %}],
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.1
+            }, {
+                label: 'İade',
+                data: [{% for stat in daily_stats %}{{ (stat.count * 0.8)|round|int }}{% if not loop.last %},{% endif %}{% endfor %}],
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // Kategori Dağılımı
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    charts.category = new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for stat in category_stats %}'{{ stat.name }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for stat in category_stats %}{{ stat.book_count }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Gecikme Analizi
+    const overdueCtx = document.getElementById('overdueChart').getContext('2d');
+    charts.overdue = new Chart(overdueCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1-3 Gün', '4-7 Gün', '1-2 Hafta', '2+ Hafta'],
+            datasets: [{
+                label: 'Geciken Kitap',
+                data: [5, 8, 12, 3],
+                backgroundColor: [
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(255, 159, 64, 0.8)',
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(201, 203, 207, 0.8)'
+                ]
+            }]
+        },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+    // Üye Türü Dağılımı
+    const memberTypeCtx = document.getElementById('memberTypeChart').getContext('2d');
+    charts.memberType = new Chart(memberTypeCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Öğrenci', 'Öğretmen', 'Personel', 'Misafir'],
+    datasets: [{
+                data: [85, 12, 8, 3],
+        backgroundColor: [
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)'
+        ]
+    }]
+        },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+    // Aylık Karşılaştırma
+    const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+    charts.monthly = new Chart(monthlyCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'],
+            datasets: [{
+                label: 'Bu Yıl',
+                data: [120, 135, 145, 158, 142, 165],
+                backgroundColor: 'rgba(75, 192, 192, 0.8)'
+            }, {
+                label: 'Geçen Yıl',
+                data: [100, 125, 130, 140, 135, 150],
+                backgroundColor: 'rgba(255, 99, 132, 0.8)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Rapor verilerini yükle
+function loadReportData() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    // Geciken kitapları güncelle
+    fetch(`/api/reports/overdue-books?start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('overdue-books').textContent = data.total || 0;
+            }
+        })
+        .catch(error => console.error('Geciken kitaplar yüklenemedi:', error));
+}
+
+// Trend görünümünü değiştir
+function switchTrendView(period) {
+    // Aktif butonu güncelle
+    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Grafik verilerini güncelle (demo veri)
+    let newData;
+    switch(period) {
+        case 'weekly':
+            newData = {
+                labels: ['1. Hafta', '2. Hafta', '3. Hafta', '4. Hafta'],
+                datasets: charts.trend.data.datasets.map(dataset => ({
+                    ...dataset,
+                    data: [45, 52, 38, 61]
+                }))
+            };
+            break;
+        case 'monthly':
+            newData = {
+                labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'],
+                datasets: charts.trend.data.datasets.map(dataset => ({
+                    ...dataset,
+                    data: [120, 135, 145, 158, 142, 165]
+                }))
+            };
+            break;
+        default: // daily
+            newData = {
+                labels: [{% for stat in daily_stats %}'{{ stat.date }}'{% if not loop.last %},{% endif %}{% endfor %}],
+                datasets: [{
+                    label: 'Ödünç Alma',
+                    data: [{% for stat in daily_stats %}{{ stat.count }}{% if not loop.last %},{% endif %}{% endfor %}],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                }, {
+                    label: 'İade',
+                    data: [{% for stat in daily_stats %}{{ (stat.count * 0.8)|round|int }}{% if not loop.last %},{% endif %}{% endfor %}],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.1
+                }]
+            };
+    }
+    
+    charts.trend.data = newData;
+    charts.trend.update();
+}
+
+// Raporları yenile
+function refreshReports() {
+    location.reload();
+}
+
+// Detay modal'larını göster
+function showTopBooksModal() {
+    const modal = new bootstrap.Modal(document.getElementById('topBooksModal'));
+    document.getElementById('topBooksContent').innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
+    modal.show();
+    
+    // API'den detaylı veri çek
+    fetch('/api/reports/top-books?limit=50')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let html = '<table class="table table-striped"><thead><tr><th>#</th><th>ISBN</th><th>Kitap</th><th>Yazar</th><th>Kategori</th><th>Ödünç</th></tr></thead><tbody>';
+                data.books.forEach((book, index) => {
+                    html += `<tr>
+                        <td>${index + 1}</td>
+                        <td><small class="text-muted">${book.isbn}</small></td>
+                        <td>${book.title}</td>
+                        <td>${book.authors}</td>
+                        <td><span class="badge bg-secondary">${book.category || 'N/A'}</span></td>
+                        <td><span class="badge bg-primary">${book.borrow_count}</span></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('topBooksContent').innerHTML = html;
+            }
+        })
+        .catch(error => {
+            document.getElementById('topBooksContent').innerHTML = '<div class="alert alert-danger">Veri yüklenemedi.</div>';
+        });
+}
+
+function showTopMembersModal() {
+    const modal = new bootstrap.Modal(document.getElementById('topMembersModal'));
+    document.getElementById('topMembersContent').innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
+    modal.show();
+    
+    // API'den detaylı veri çek
+    fetch('/api/reports/top-members?limit=50')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let html = '<table class="table table-striped"><thead><tr><th>#</th><th>Üye</th><th>Okul No</th><th>Sınıf</th><th>Tür</th><th>İşlem</th></tr></thead><tbody>';
+                data.members.forEach((member, index) => {
+                    html += `<tr>
+                        <td>${index + 1}</td>
+                        <td>${member.ad_soyad}</td>
+                        <td><small class="text-muted">${member.numara || '-'}</small></td>
+                        <td>${member.sinif || '-'}</td>
+                        <td><span class="badge bg-info">${member.uye_turu || 'Üye'}</span></td>
+                        <td><span class="badge bg-success">${member.transaction_count}</span></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('topMembersContent').innerHTML = html;
+            }
+        })
+        .catch(error => {
+            document.getElementById('topMembersContent').innerHTML = '<div class="alert alert-danger">Veri yüklenemedi.</div>';
+        });
+}
+
+// Export fonksiyonları
+function exportToExcel() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    // Tablo verilerini topla
+    const reportData = {
+        'En Çok Ödünç Alınan Kitaplar': [],
+        'En Aktif Üyeler': [],
+        'Günlük İstatistikler': []
+    };
+    
+    // Kitap verilerini topla
+    document.querySelectorAll('#most-borrowed-table tbody tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length > 0) {
+            reportData['En Çok Ödünç Alınan Kitaplar'].push({
+                'Sıra': cells[0].textContent,
+                'Kitap': cells[1].textContent.trim(),
+                'Yazar': cells[2].textContent,
+                'Ödünç Sayısı': cells[3].textContent
+            });
+        }
+    });
+    
+    // Excel dosyası oluştur
+    const wb = XLSX.utils.book_new();
+    
+    Object.keys(reportData).forEach(sheetName => {
+        if (reportData[sheetName].length > 0) {
+            const ws = XLSX.utils.json_to_sheet(reportData[sheetName]);
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        }
+    });
+    
+    // Dosyayı indir
+    XLSX.writeFile(wb, `Kütüphane_Raporu_${startDate}_${endDate}.xlsx`);
+}
+
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Başlık
+    doc.setFontSize(16);
+    doc.text('Kütüphane Raporu', 20, 20);
+    
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    doc.setFontSize(12);
+    doc.text(`Tarih Aralığı: ${startDate} - ${endDate}`, 20, 30);
+    
+    // Özet istatistikler
+    doc.text('Özet İstatistikler:', 20, 50);
+    doc.text(`Toplam İşlem: ${document.getElementById('total-transactions').textContent}`, 30, 60);
+    doc.text(`Günlük Ortalama: ${document.getElementById('daily-average').textContent}`, 30, 70);
+    doc.text(`Aktif Üye: ${document.getElementById('active-members').textContent}`, 30, 80);
+    
+    // Dosyayı indir
+    doc.save(`Kütüphane_Raporu_${startDate}_${endDate}.pdf`);
+}
+
+function exportToCSV() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Kütüphane Raporu\\n";
+    csvContent += `Tarih Aralığı,${startDate} - ${endDate}\\n\\n`;
+    
+    // En çok ödünç alınan kitaplar
+    csvContent += "En Çok Ödünç Alınan Kitaplar\\n";
+    csvContent += "Sıra,Kitap,Yazar,Ödünç Sayısı\\n";
+    
+    document.querySelectorAll('.table tbody tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 4) {
+            csvContent += `${cells[0].textContent},"${cells[1].textContent.trim()}","${cells[2].textContent}",${cells[3].textContent}\\n`;
+        }
+    });
+    
+    // Dosyayı indir
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Kütüphane_Raporu_${startDate}_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}

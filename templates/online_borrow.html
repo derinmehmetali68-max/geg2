@@ -1,0 +1,1241 @@
+{% extends "base.html" %}
+
+{% block title %}Kütüphane İşlem Merkezi - Online & QR Ödünç Alma{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1><i class="fas fa-university"></i> Kütüphane İşlem Merkezi</h1>
+                <p class="text-muted">Online rezervasyon, QR kod tarama ve anında işlem yapma merkezi</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- İstatistikler -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-primary text-white">
+                <div class="stat-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="stat-content">
+                    <h4 id="totalBooks">0</h4>
+                    <p>Toplam Kitap</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success text-white">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h4 id="availableBooks">0</h4>
+                    <p>Mevcut Kitap</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning text-white">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h4 id="myRequests">0</h4>
+                    <p>Rezervasyonlarım</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-info text-white">
+                <div class="stat-icon">
+                    <i class="fas fa-qrcode"></i>
+                </div>
+                <div class="stat-content">
+                    <h4 id="qrScans">0</h4>
+                    <p>QR Taramaları</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ana İşlem Merkezi -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-cogs"></i> Ana İşlem Merkezi</h5>
+                </div>
+                <div class="card-body">
+                    <!-- İşlem Seçenekleri -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-primary btn-lg w-100 mb-2" onclick="showQuickProcess()">
+                                <i class="fas fa-bolt"></i><br>Hızlı İşlem
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-success btn-lg w-100 mb-2" onclick="showQRScanner()">
+                                <i class="fas fa-qrcode"></i><br>QR Tarayıcı
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-info btn-lg w-100 mb-2" onclick="showOnlineReservation()">
+                                <i class="fas fa-globe"></i><br>Online Rezervasyon
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-warning btn-lg w-100 mb-2" onclick="showRecommendations()">
+                                <i class="fas fa-star"></i><br>Kitap Önerileri
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hızlı İşlem Bölümü -->
+                    <div id="quickProcessSection" class="d-none">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-book"></i> Kitap Arama</h6>
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="quickBookSearch" placeholder="Kitap adı, yazar veya ISBN...">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-outline-primary" type="button" onclick="quickBookSearch()">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="quickBookResults" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                                    <!-- Hızlı kitap sonuçları -->
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-user"></i> Üye Arama</h6>
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="quickMemberSearch" placeholder="Üye adı, numara veya e-posta...">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-outline-success" type="button" onclick="quickMemberSearch()">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="quickMemberResults" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                                    <!-- Hızlı üye sonuçları -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QR Tarayıcı Bölümü -->
+                    <div id="qrScannerSection" class="d-none">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6><i class="fas fa-camera"></i> QR Kod Tarayıcı</h6>
+                                        <div class="scanner-controls">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="toggleFlash()" id="flashBtn">
+                                                <i class="fas fa-lightbulb"></i> Flaş
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-info" onclick="switchCamera()" id="switchBtn">
+                                                <i class="fas fa-sync"></i> Kamera Değiştir
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="qrScanner" class="text-center">
+                                            <div class="scanner-container">
+                                                <video id="video" width="100%" height="300" autoplay></video>
+                                                <canvas id="canvas" style="display: none;"></canvas>
+                                                <div class="scanner-overlay">
+                                                    <div class="scanner-frame"></div>
+                                                    <div class="scanner-instructions">
+                                                        <i class="fas fa-qrcode"></i>
+                                                        <p>Kitap QR kodunu çerçeve içine alın</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mt-3">
+                                                <button class="btn btn-primary" onclick="startScanner()" id="startBtn">
+                                                    <i class="fas fa-play"></i> Tarayıcıyı Başlat
+                                                </button>
+                                                <button class="btn btn-secondary" onclick="stopScanner()" id="stopBtn" style="display: none;">
+                                                    <i class="fas fa-stop"></i> Tarayıcıyı Durdur
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="fas fa-keyboard"></i> Manuel Giriş</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label>Kitap ISBN</label>
+                                            <input type="text" class="form-control" id="manualIsbn" placeholder="ISBN numarası...">
+                                        </div>
+                                        <button class="btn btn-primary w-100" onclick="scanManualIsbn()">
+                                            <i class="fas fa-search"></i> Kitap Ara
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Online Rezervasyon Bölümü -->
+                    <div id="onlineReservationSection" class="d-none">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="fas fa-search"></i> Gelişmiş Kitap Arama</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <input type="text" class="form-control" id="searchInput" placeholder="Kitap adı, yazar...">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <select class="form-control" id="categoryFilter">
+                                                    <option value="">Tüm Kategoriler</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <select class="form-control" id="availabilityFilter">
+                                                    <option value="">Tümü</option>
+                                                    <option value="available">Mevcut</option>
+                                                    <option value="unavailable">Mevcut Değil</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <button class="btn btn-primary w-100" onclick="searchBooks()">
+                                                    <i class="fas fa-search"></i> Ara
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="booksList" class="row mt-3">
+                                            <!-- Kitap listesi -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="fas fa-calendar"></i> Rezervasyon Formu</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="reservationForm">
+                                            <div class="form-group">
+                                                <label>Alış Tarihi</label>
+                                                <input type="date" class="form-control" id="pickupDate" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Alış Saati</label>
+                                                <input type="time" class="form-control" id="pickupTime" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Notlar</label>
+                                                <textarea class="form-control" id="notes" rows="3"></textarea>
+                                            </div>
+                                            <button type="button" class="btn btn-success w-100" onclick="submitReservation()">
+                                                <i class="fas fa-calendar-plus"></i> Rezervasyon Yap
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Akıllı Öneriler Bölümü -->
+                    <div id="recommendationsSection" class="d-none">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6><i class="fas fa-lightbulb"></i> Sizin İçin Önerilen Kitaplar</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="recommendationsList" class="row">
+                                    <!-- Öneriler buraya yüklenecek -->
+                                </div>
+                                <div id="loadingRecommendations" class="text-center d-none">
+                                    <div class="spinner-border text-info" role="status">
+                                        <span class="sr-only">Yükleniyor...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seçili Kitap ve Üye Bilgileri -->
+    <div id="selectedItemsSection" class="row mb-4 d-none">
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h6><i class="fas fa-book"></i> Seçili Kitap</h6>
+                </div>
+                <div class="card-body" id="selectedBookInfo">
+                    <!-- Seçili kitap bilgileri -->
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h6><i class="fas fa-user"></i> Seçili Üye</h6>
+                </div>
+                <div class="card-body" id="selectedMemberInfo">
+                    <!-- Seçili üye bilgileri -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İşlem Butonları -->
+    <div id="actionButtons" class="row mb-4 d-none">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6>İşlem Seçin</h6>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-success btn-lg" onclick="processBorrow()">
+                            <i class="fas fa-hand-holding"></i> Ödünç Al
+                        </button>
+                        <button type="button" class="btn btn-warning btn-lg" onclick="processReturn()">
+                            <i class="fas fa-undo"></i> İade Et
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="showBookDetails()">
+                            <i class="fas fa-info-circle"></i> Kitap Detayları
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="showMemberDetails()">
+                            <i class="fas fa-user-circle"></i> Üye Detayları
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kitaplarım -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-list"></i> Kitaplarım</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadMyBooks()">
+                        <i class="fas fa-sync-alt"></i> Yenile
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="myBooksList">
+                        <!-- Kitaplar buraya yüklenecek -->
+                    </div>
+                    <div id="loadingBooks" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Yükleniyor...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- İşlem Sonucu Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultModalTitle">
+                    <i class="fas fa-check-circle"></i> İşlem Başarılı
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="resultContent">
+                    <!-- İşlem sonucu detayları buraya gelecek -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="loadMyBooks()">
+                    <i class="fas fa-list"></i> Kitaplarımı Güncelle
+                </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    Tamam
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Kod Kütüphanesi -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+<style>
+.stat-card {
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.stat-content h4 {
+    font-size: 2rem;
+    margin: 0;
+}
+
+.scanner-container {
+    position: relative;
+    display: inline-block;
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.scanner-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    border: 2px solid #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+}
+
+.scanner-instructions {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 20px;
+    border-radius: 20px;
+}
+
+.book-card {
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.book-card:hover {
+    transform: translateY(-5px);
+}
+
+.book-cover {
+    width: 100px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+.list-group-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+// Global değişkenler
+let selectedBook = null;
+let selectedMember = null;
+let currentBooks = [];
+let currentMembers = [];
+let scanner = null;
+let stream = null;
+let isScanning = false;
+
+// Sayfa yüklendiğinde çalışacak fonksiyonlar
+$(document).ready(function() {
+    loadStats();
+    loadMyBooks();
+    loadCategories();
+    
+    // Tarih alanlarını bugünün tarihi ile doldur
+    const today = new Date().toISOString().split('T')[0];
+    $('#pickupDate').val(today);
+    $('#pickupTime').val('10:00');
+});
+
+// İstatistikleri yükle
+function loadStats() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            $('#totalBooks').text(data.total_books || 0);
+            $('#availableBooks').text(data.available_books || 0);
+            $('#myRequests').text(data.my_requests || 0);
+            $('#qrScans').text(data.qr_scans || 0);
+        })
+        .catch(error => console.error('Stats yüklenirken hata:', error));
+}
+
+// Kategorileri yükle
+function loadCategories() {
+    fetch('/api/categories')
+        .then(response => response.json())
+        .then(data => {
+            const select = $('#categoryFilter');
+            select.empty().append('<option value="">Tüm Kategoriler</option>');
+            data.categories.forEach(category => {
+                select.append(`<option value="${category.id}">${category.name}</option>`);
+            });
+        })
+        .catch(error => console.error('Kategoriler yüklenirken hata:', error));
+}
+
+// Kitaplarımı yükle
+function loadMyBooks() {
+    $('#loadingBooks').removeClass('d-none');
+    $('#myBooksList').empty();
+    
+    fetch('/api/my-books')
+        .then(response => response.json())
+        .then(data => {
+            $('#loadingBooks').addClass('d-none');
+            displayMyBooks(data.books || []);
+        })
+        .catch(error => {
+            console.error('Kitaplarım yüklenirken hata:', error);
+            $('#loadingBooks').addClass('d-none');
+            showAlert('Kitaplarınız yüklenirken bir hata oluştu.', 'danger');
+        });
+}
+
+// Kitaplarımı göster
+function displayMyBooks(books) {
+    const container = $('#myBooksList');
+    
+    if (books.length === 0) {
+        container.html(`
+            <div class="text-center">
+                <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                <h5>Henüz kitap ödünç almamışsınız</h5>
+                <p class="text-muted">Yukarıdan kitap arayıp ödünç alabilirsiniz.</p>
+            </div>
+        `);
+        return;
+    }
+    
+    books.forEach(book => {
+        const card = `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card book-card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-4">
+                                <img src="${book.image_path || '/static/img/default-book.jpg'}" 
+                                     alt="${book.title}" 
+                                     class="book-cover w-100" 
+                                     onerror="this.src='/static/img/default-book.jpg'">
+                            </div>
+                            <div class="col-8">
+                                <h6>${book.title}</h6>
+                                <p class="text-muted small">${book.authors || 'Bilinmiyor'}</p>
+                                <p class="text-muted small">ISBN: ${book.isbn}</p>
+                                <div class="mt-2">
+                                    <span class="badge badge-info">Alış: ${book.borrow_date}</span>
+                                    <span class="badge badge-warning">İade: ${book.due_date}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.append(card);
+    });
+}
+
+// Bölüm gösterme fonksiyonları
+function showQuickProcess() {
+    hideAllSections();
+    $('#quickProcessSection').removeClass('d-none');
+}
+
+function showQRScanner() {
+    hideAllSections();
+    $('#qrScannerSection').removeClass('d-none');
+}
+
+function showOnlineReservation() {
+    hideAllSections();
+    $('#onlineReservationSection').removeClass('d-none');
+}
+
+function showRecommendations() {
+    console.log('Kitap önerileri sekmesi tıklandı');
+    hideAllSections();
+    $('#recommendationsSection').removeClass('d-none');
+    loadRecommendations();
+}
+
+function hideAllSections() {
+    $('#quickProcessSection, #qrScannerSection, #onlineReservationSection, #recommendationsSection').addClass('d-none');
+}
+
+// Hızlı kitap arama
+function quickBookSearch() {
+    const query = $('#quickBookSearch').val().trim();
+    if (!query) return;
+    
+    fetch(`/api/books/search?q=${encodeURIComponent(query)}&limit=5`)
+        .then(response => response.json())
+        .then(data => {
+            displayQuickBookResults(data.books || []);
+        })
+        .catch(error => {
+            console.error('Kitap arama hatası:', error);
+            showAlert('Kitap aranırken bir hata oluştu.', 'danger');
+        });
+}
+
+// Hızlı üye arama
+function quickMemberSearch() {
+    const query = $('#quickMemberSearch').val().trim();
+    if (!query) return;
+    
+    fetch(`/api/members/search?q=${encodeURIComponent(query)}&limit=5`)
+        .then(response => response.json())
+        .then(data => {
+            displayQuickMemberResults(data.members || []);
+        })
+        .catch(error => {
+            console.error('Üye arama hatası:', error);
+            showAlert('Üye aranırken bir hata oluştu.', 'danger');
+        });
+}
+
+// Hızlı kitap sonuçlarını göster
+function displayQuickBookResults(books) {
+    const container = $('#quickBookResults');
+    container.empty();
+    
+    books.forEach(book => {
+        const item = `
+            <div class="list-group-item list-group-item-action" onclick="selectBook('${book.isbn}')">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${book.title}</h6>
+                    <small class="text-muted">${book.isbn}</small>
+                </div>
+                <p class="mb-1">${book.authors || 'Bilinmiyor'}</p>
+                <small class="text-${book.quantity > book.borrowed_count ? 'success' : 'danger'}">
+                    ${book.quantity > book.borrowed_count ? 'Mevcut' : 'Mevcut değil'}
+                </small>
+            </div>
+        `;
+        container.append(item);
+    });
+}
+
+// Hızlı üye sonuçlarını göster
+function displayQuickMemberResults(members) {
+    const container = $('#quickMemberResults');
+    container.empty();
+    
+    members.forEach(member => {
+        const item = `
+            <div class="list-group-item list-group-item-action" onclick="selectMember('${member.id}')">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${member.name} ${member.surname}</h6>
+                    <small class="text-muted">${member.member_number}</small>
+                </div>
+                <p class="mb-1">${member.email}</p>
+                <small class="text-info">${member.phone}</small>
+            </div>
+        `;
+        container.append(item);
+    });
+}
+
+// Kitap seç
+function selectBook(isbn) {
+    fetch(`/api/books/${isbn}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                selectedBook = data.book;
+                displaySelectedBook(selectedBook);
+                checkSelectionStatus();
+            } else {
+                showAlert('Kitap bulunamadı.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Kitap seçme hatası:', error);
+            showAlert('Kitap seçilirken bir hata oluştu.', 'danger');
+        });
+}
+
+// Üye seç
+function selectMember(memberId) {
+    fetch(`/api/members/${memberId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                selectedMember = data.member;
+                displaySelectedMember(selectedMember);
+                checkSelectionStatus();
+            } else {
+                showAlert('Üye bulunamadı.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Üye seçme hatası:', error);
+            showAlert('Üye seçilirken bir hata oluştu.', 'danger');
+        });
+}
+
+// Seçili kitabı göster
+function displaySelectedBook(book) {
+    const container = $('#selectedBookInfo');
+    container.html(`
+        <div class="row">
+            <div class="col-4">
+                <img src="${book.image_path || '/static/img/default-book.jpg'}" 
+                     alt="${book.title}" 
+                     class="book-cover w-100" 
+                     onerror="this.src='/static/img/default-book.jpg'">
+            </div>
+            <div class="col-8">
+                <h6>${book.title}</h6>
+                <p class="text-muted small">${book.authors || 'Bilinmiyor'}</p>
+                <p class="text-muted small">ISBN: ${book.isbn}</p>
+                <p class="text-muted small">Kategori: ${book.category_name || 'Bilinmiyor'}</p>
+                <div class="mt-2">
+                    <span class="badge badge-${book.quantity > book.borrowed_count ? 'success' : 'danger'}">
+                        ${book.quantity > book.borrowed_count ? 'Mevcut' : 'Mevcut değil'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `);
+    $('#selectedItemsSection').removeClass('d-none');
+}
+
+// Seçili üyeyi göster
+function displaySelectedMember(member) {
+    const container = $('#selectedMemberInfo');
+    container.html(`
+        <div class="row">
+            <div class="col-12">
+                <h6>${member.name} ${member.surname}</h6>
+                <p class="text-muted small">Üye No: ${member.member_number}</p>
+                <p class="text-muted small">E-posta: ${member.email}</p>
+                <p class="text-muted small">Telefon: ${member.phone}</p>
+                <div class="mt-2">
+                    <span class="badge badge-info">Aktif Üye</span>
+                </div>
+            </div>
+        </div>
+    `);
+    $('#selectedItemsSection').removeClass('d-none');
+}
+
+// Seçim durumunu kontrol et
+function checkSelectionStatus() {
+    console.log('Seçim durumu kontrol ediliyor...');
+    console.log('Seçili kitap:', selectedBook);
+    console.log('Seçili üye:', selectedMember);
+    
+    if (selectedBook && selectedMember) {
+        console.log('Her ikisi de seçili, butonları göster');
+        $('#actionButtons').removeClass('d-none');
+    } else {
+        console.log('Her ikisi seçili değil, butonları gizle');
+        $('#actionButtons').addClass('d-none');
+    }
+}
+
+// QR Tarayıcı Fonksiyonları
+function startScanner() {
+    if (isScanning) return;
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+        } 
+    })
+    .then(function(mediaStream) {
+        stream = mediaStream;
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        video.play();
+        
+        isScanning = true;
+        $('#startBtn').hide();
+        $('#stopBtn').show();
+        
+        // QR kod tarama döngüsü
+        scanQRCode();
+    })
+    .catch(function(error) {
+        console.error('Kamera erişim hatası:', error);
+        showAlert('Kameraya erişim sağlanamadı. Lütfen kamera iznini kontrol edin.', 'danger');
+    });
+}
+
+function stopScanner() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    
+    isScanning = false;
+    $('#startBtn').show();
+    $('#stopBtn').hide();
+    
+    const video = document.getElementById('video');
+    video.srcObject = null;
+}
+
+function scanQRCode() {
+    if (!isScanning) return;
+    
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    
+    if (code) {
+        console.log('QR kod bulundu:', code.data);
+        stopScanner();
+        handleQRCode(code.data);
+    } else {
+        // QR kod bulunamadı, tekrar dene
+        setTimeout(scanQRCode, 100);
+    }
+}
+
+function handleQRCode(data) {
+    // QR kod verisi ISBN olmalı
+    if (data && data.length >= 10) {
+        $('#manualIsbn').val(data);
+        scanManualIsbn();
+    } else {
+        showAlert('Geçersiz QR kod. Lütfen kitap QR kodunu tarayın.', 'warning');
+    }
+}
+
+function scanManualIsbn() {
+    const isbn = $('#manualIsbn').val().trim();
+    if (!isbn) {
+        showAlert('Lütfen ISBN numarası girin.', 'warning');
+        return;
+    }
+    
+    fetch(`/api/books/${isbn}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                selectedBook = data.book;
+                displaySelectedBook(selectedBook);
+                checkSelectionStatus();
+                showAlert('Kitap bulundu!', 'success');
+            } else {
+                showAlert('Kitap bulunamadı. ISBN numarasını kontrol edin.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('ISBN arama hatası:', error);
+            showAlert('Kitap aranırken bir hata oluştu.', 'danger');
+        });
+}
+
+// Kamera kontrolleri
+function toggleFlash() {
+    if (stream) {
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities();
+        
+        if (capabilities.torch) {
+            const currentTorch = track.getSettings().torch;
+            track.applyConstraints({
+                advanced: [{ torch: !currentTorch }]
+            });
+        }
+    }
+}
+
+function switchCamera() {
+    if (stream) {
+        stopScanner();
+        setTimeout(() => {
+            startScanner();
+        }, 500);
+    }
+}
+
+// Online rezervasyon fonksiyonları
+function searchBooks() {
+    const searchTerm = $('#searchInput').val().trim();
+    const categoryId = $('#categoryFilter').val();
+    const availability = $('#availabilityFilter').val();
+    
+    if (!searchTerm && !categoryId && !availability) {
+        showAlert('Lütfen en az bir arama kriteri girin.', 'warning');
+        return;
+    }
+    
+    const params = new URLSearchParams();
+    if (searchTerm) params.append('q', searchTerm);
+    if (categoryId) params.append('category', categoryId);
+    if (availability) params.append('availability', availability);
+    
+    fetch(`/api/books/search?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            displayBooks(data.books || []);
+        })
+        .catch(error => {
+            console.error('Kitap arama hatası:', error);
+            showAlert('Kitaplar aranırken bir hata oluştu.', 'danger');
+        });
+}
+
+function displayBooks(books) {
+    const container = $('#booksList');
+    container.empty();
+    
+    if (books.length === 0) {
+        container.html(`
+            <div class="col-12 text-center">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5>Kitap bulunamadı</h5>
+                <p class="text-muted">Arama kriterlerinizi değiştirip tekrar deneyin.</p>
+            </div>
+        `);
+        return;
+    }
+    
+    books.forEach(book => {
+        const card = `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card book-card" onclick="selectBook('${book.isbn}')">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-4">
+                                <img src="${book.image_path || '/static/img/default-book.jpg'}" 
+                                     alt="${book.title}" 
+                                     class="book-cover w-100" 
+                                     onerror="this.src='/static/img/default-book.jpg'">
+                            </div>
+                            <div class="col-8">
+                                <h6>${book.title}</h6>
+                                <p class="text-muted small">${book.authors || 'Bilinmiyor'}</p>
+                                <p class="text-muted small">ISBN: ${book.isbn}</p>
+                                <div class="mt-2">
+                                    <span class="badge badge-${book.quantity > book.borrowed_count ? 'success' : 'danger'}">
+                                        ${book.quantity > book.borrowed_count ? 'Mevcut' : 'Mevcut değil'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.append(card);
+    });
+}
+
+function submitReservation() {
+    if (!selectedBook) {
+        showAlert('Lütfen önce bir kitap seçin.', 'warning');
+        return;
+    }
+    
+    const formData = {
+        isbn: selectedBook.isbn,
+        pickup_date: $('#pickupDate').val(),
+        pickup_time: $('#pickupTime').val(),
+        notes: $('#notes').val()
+    };
+    
+    if (!formData.pickup_date || !formData.pickup_time) {
+        showAlert('Lütfen alış tarihi ve saatini seçin.', 'warning');
+        return;
+    }
+    
+    fetch('/api/online-borrow/request', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            loadStats();
+            $('#reservationForm')[0].reset();
+            const today = new Date().toISOString().split('T')[0];
+            $('#pickupDate').val(today);
+            $('#pickupTime').val('10:00');
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Rezervasyon hatası:', error);
+        showAlert('Rezervasyon yapılırken bir hata oluştu.', 'danger');
+    });
+}
+
+// Önerileri yükle
+function loadRecommendations() {
+    console.log('Öneriler yükleniyor...');
+    $('#loadingRecommendations').removeClass('d-none');
+    
+    fetch('/api/books/recommendations')
+        .then(response => {
+            console.log('API yanıtı alındı:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Öneriler verisi:', data);
+            displayRecommendations(data.recommendations || []);
+            $('#loadingRecommendations').addClass('d-none');
+        })
+        .catch(error => {
+            console.error('Öneriler yüklenirken hata:', error);
+            $('#loadingRecommendations').addClass('d-none');
+            showAlert('Öneriler yüklenirken bir hata oluştu.', 'danger');
+        });
+}
+
+function displayRecommendations(recommendations) {
+    console.log('Öneriler gösteriliyor:', recommendations);
+    const container = $('#recommendationsList');
+    container.empty();
+    
+    if (recommendations.length === 0) {
+        console.log('Hiç öneri yok, boş mesaj gösteriliyor');
+        container.html(`
+            <div class="col-12 text-center">
+                <i class="fas fa-lightbulb fa-3x text-muted mb-3"></i>
+                <h5>Henüz öneri bulunmuyor</h5>
+                <p class="text-muted">Kitap okudukça size özel öneriler sunacağız.</p>
+            </div>
+        `);
+        return;
+    }
+    
+    recommendations.forEach(book => {
+        const card = `
+            <div class="col-md-4 mb-3">
+                <div class="card book-card border-info">
+                    <div class="card-body text-center">
+                        <img src="${book.image_path || '/static/img/default-book.jpg'}" 
+                             alt="${book.title}" 
+                             class="book-cover mb-3" 
+                             onerror="this.src='/static/img/default-book.jpg'">
+                        <h6>${book.title}</h6>
+                        <p class="text-muted">${book.authors || 'Bilinmiyor'}</p>
+                        <div class="recommendation-reason">
+                            <small class="text-info">
+                                <i class="fas fa-lightbulb"></i> 
+                                ${book.recommendation_reason || 'Sizin için önerildi'}
+                            </small>
+                        </div>
+                        <button class="btn btn-info btn-sm mt-2" onclick="selectBook('${book.isbn}')">
+                            <i class="fas fa-book"></i> Seç
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.append(card);
+    });
+}
+
+// İşlem fonksiyonları
+function processBorrow() {
+    if (!selectedBook || !selectedMember) {
+        showAlert('Lütfen kitap ve üye seçin.', 'warning');
+        return;
+    }
+    
+    const formData = {
+        isbn: selectedBook.isbn,
+        member_id: selectedMember.id
+    };
+    
+    fetch('/api/transactions/borrow', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showResultModal('Ödünç Alma Başarılı', data.message, 'success');
+            resetSelection();
+            loadStats();
+            loadMyBooks();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Ödünç alma hatası:', error);
+        showAlert('Ödünç alma işlemi sırasında bir hata oluştu.', 'danger');
+    });
+}
+
+function processReturn() {
+    if (!selectedBook || !selectedMember) {
+        showAlert('Lütfen kitap ve üye seçin.', 'warning');
+        return;
+    }
+    
+    const formData = {
+        isbn: selectedBook.isbn,
+        member_id: selectedMember.id
+    };
+    
+    fetch('/api/transactions/return', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showResultModal('İade İşlemi Başarılı', data.message, 'success');
+            resetSelection();
+            loadStats();
+            loadMyBooks();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('İade hatası:', error);
+        showAlert('İade işlemi sırasında bir hata oluştu.', 'danger');
+    });
+}
+
+function showResultModal(title, message, type) {
+    $('#resultModalTitle').html(`<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${title}`);
+    $('#resultContent').html(message);
+    $('#resultModal').modal('show');
+}
+
+function resetSelection() {
+    selectedBook = null;
+    selectedMember = null;
+    $('#selectedItemsSection').addClass('d-none');
+    $('#actionButtons').addClass('d-none');
+    $('#quickBookResults, #quickMemberResults').empty();
+    $('#quickBookSearch, #quickMemberSearch, #manualIsbn').val('');
+}
+
+function showBookDetails() {
+    if (selectedBook) {
+        window.open(`/books/${selectedBook.isbn}`, '_blank');
+    }
+}
+
+function showMemberDetails() {
+    if (selectedMember) {
+        window.open(`/members/${selectedMember.id}`, '_blank');
+    }
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    `;
+    
+    // Sayfanın üstüne alert ekle
+    $('.container-fluid').prepend(alertHtml);
+    
+    // 5 saniye sonra otomatik kaldır
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+
+// Enter tuşu ile arama
+$('#quickBookSearch').keypress(function(e) {
+    if (e.which == 13) {
+        quickBookSearch();
+    }
+});
+
+$('#quickMemberSearch').keypress(function(e) {
+    if (e.which == 13) {
+        quickMemberSearch();
+    }
+});
+
+$('#manualIsbn').keypress(function(e) {
+    if (e.which == 13) {
+        scanManualIsbn();
+    }
+});
+
+$('#searchInput').keypress(function(e) {
+    if (e.which == 13) {
+        searchBooks();
+    }
+});
+</script>
+{% endblock %} 

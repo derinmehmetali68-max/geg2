@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Mobil - Devre Dışı{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1><i class="bi bi-info-circle"></i> Bu sayfa devre dışı</h1>
+                <p class="text-muted">QR kod ile kitap ödünç alma ve iade işlemleri</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Devre dışı bırakıldı -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="bi bi-qrcode-scan"></i> QR Kod Tarayıcı</h5>
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-camera display-1 text-primary mb-3"></i>
+                    <h6>Kameradan QR Kod Tara</h6>
+                    <p class="text-muted">Kitap veya üye QR kodunu kamera ile tarayarak işlem yapın</p>
+                    <button class="btn btn-primary btn-lg" onclick="startQRScanner()">
+                        <i class="bi bi-camera"></i> Tarayıcıyı Başlat
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="bi bi-keyboard"></i> Manuel Giriş</h5>
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-pencil-square display-1 text-success mb-3"></i>
+                    <h6>ISBN/Üye No ile İşlem</h6>
+                    <p class="text-muted">ISBN numarası ve üye numarası girerek işlem yapın</p>
+                    <button class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#manualEntryModal">
+                        <i class="bi bi-keyboard"></i> Manuel Giriş
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Kamera Alanı -->
+    <div class="row mb-4" id="qrScannerArea" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-camera"></i> QR Kod Tarayıcı</h5>
+                    <button class="btn btn-sm btn-danger float-end" onclick="stopQRScanner()">
+                        <i class="bi bi-x"></i> Kapat
+                    </button>
+                </div>
+                <div class="card-body text-center">
+                    <div id="qr-reader" style="width: 100%; max-width: 600px; margin: 0 auto;"></div>
+                    <div class="mt-3">
+                        <div id="qr-reader-results"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nasıl Kullanılır -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-info-circle"></i> Nasıl Kullanılır?</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-book"></i> Kitap Ödünç Alma/İade</h6>
+                            <ol class="list-group list-group-numbered">
+                                <li class="list-group-item">Kitabın QR kodunu tarayın</li>
+                                <li class="list-group-item">Üye QR kodunu tarayın veya numara girin</li>
+                                <li class="list-group-item">İşlem türünü seçin (Ödünç/İade)</li>
+                                <li class="list-group-item">İşlemi onaylayın</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-person-badge"></i> Üye İşlemleri</h6>
+                            <ol class="list-group list-group-numbered">
+                                <li class="list-group-item">Üye QR kodunu tarayın</li>
+                                <li class="list-group-item">Üye bilgilerini kontrol edin</li>
+                                <li class="list-group-item">Ödünç aldığı kitapları görün</li>
+                                <li class="list-group-item">Ceza durumunu kontrol edin</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Son İşlemler -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-clock-history"></i> -</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>İşlem</th>
+                                    <th>Kitap</th>
+                                    <th>Üye</th>
+                                    <th>Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentQRTransactions">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Henüz QR işlemi yapılmadı</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manuel Giriş Modal -->
+<div class="modal fade" id="manualEntryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manuel Giriş</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="manualEntryForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="manualISBN" class="form-label">Kitap ISBN</label>
+                        <input type="text" class="form-control" id="manualISBN" placeholder="9789750719387">
+                    </div>
+                    <div class="mb-3">
+                        <label for="manualMemberNo" class="form-label">Üye Numarası</label>
+                        <input type="text" class="form-control" id="manualMemberNo" placeholder="12345">
+                    </div>
+                    <div class="mb-3">
+                        <label for="transactionType" class="form-label">İşlem Türü</label>
+                        <select class="form-control" id="transactionType">
+                            <option value="borrow">Ödünç Ver</option>
+                            <option value="return">İade Al</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check"></i> İşlemi Gerçekleştir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- QR Code Scanner Library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+let html5QrCode;
+
+// QR Scanner başlat
+function startQRScanner() {
+    $('#qrScannerArea').show();
+    
+    html5QrCode = new Html5Qrcode("qr-reader");
+    
+    const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+    };
+    
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText, decodedResult) => {
+            // QR kod başarıyla okundu
+            handleQRResult(decodedText);
+        },
+        (errorMessage) => {
+            // QR kod okuma hatası (sessizce geç)
+        }
+    ).catch(err => {
+        console.error('QR scanner başlatılamadı:', err);
+        showToast('Kamera erişimi sağlanamadı', 'error');
+    });
+}
+
+// QR Scanner durdur
+function stopQRScanner() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            $('#qrScannerArea').hide();
+        }).catch(err => {
+            console.error('QR scanner durdurulamadı:', err);
+        });
+    }
+}
+
+// QR sonucunu işle
+function handleQRResult(qrText) {
+    console.log('QR Kod okundu:', qrText);
+    
+    // QR scanner'ı durdur
+    stopQRScanner();
+    
+    // QR kodunu analiz et
+    if (qrText.match(/^\d{13}$/)) {
+        // ISBN formatında
+        $('#manualISBN').val(qrText);
+        $('#manualEntryModal').modal('show');
+        showToast('Kitap QR kodu okundu', 'success');
+    } else if (qrText.match(/^\d{4,6}$/)) {
+        // Üye numarası formatında
+        $('#manualMemberNo').val(qrText);
+        $('#manualEntryModal').modal('show');
+        showToast('Üye QR kodu okundu', 'success');
+    } else {
+        // Diğer formatlar
+        showToast('QR kod formatı tanınmadı: ' + qrText, 'warning');
+    }
+}
+
+// Manuel giriş form submit
+$('#manualEntryForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    const isbn = $('#manualISBN').val().trim();
+    const memberNo = $('#manualMemberNo').val().trim();
+    const type = $('#transactionType').val();
+    
+    if (!isbn || !memberNo) {
+        showToast('ISBN ve üye numarası gerekli', 'warning');
+        return;
+    }
+    
+    // İşlemi gerçekleştir
+    const endpoint = type === 'borrow' ? '/api/transactions/borrow' : '/api/transactions/return';
+    
+    $.ajax({
+        url: endpoint,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            isbn: isbn,
+            school_no: memberNo,
+            due_date: type === 'borrow' ? new Date(Date.now() + 14*24*60*60*1000).toISOString().split('T')[0] : undefined
+        }),
+        success: function(resp) {
+            showToast(resp.message || 'İşlem başarılı', 'success');
+            $('#manualEntryModal').modal('hide');
+            $('#manualEntryForm')[0].reset();
+            loadRecentTransactions();
+        },
+        error: function(xhr) {
+            showToast(xhr.responseJSON?.message || 'İşlem hatası', 'error');
+        }
+    });
+});
+
+// Son işlemleri yükle
+function loadRecentTransactions() {
+    $.ajax({
+        url: '/api/transactions',
+        method: 'GET',
+        data: { page: 1, per_page: 5 },
+        success: function(data) {
+            const tbody = $('#recentQRTransactions');
+            tbody.empty();
+            
+            if (data.transactions && data.transactions.length > 0) {
+                data.transactions.forEach(trans => {
+                    const status = trans.return_date ? 
+                        '<span class="badge bg-success">İade Edildi</span>' : 
+                        '<span class="badge bg-warning">Ödünçte</span>';
+                    
+                    tbody.append(`
+                        <tr>
+                            <td>${formatDate(trans.borrow_date)}</td>
+                            <td>${trans.return_date ? 'İade' : 'Ödünç'}</td>
+                            <td>${trans.book_title}</td>
+                            <td>${trans.member_name}</td>
+                            <td>${status}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                tbody.html('<tr><td colspan="5" class="text-center text-muted">Henüz işlem yapılmadı</td></tr>');
+            }
+        },
+        error: function() {
+            $('#recentQRTransactions').html('<tr><td colspan="5" class="text-center text-danger">Yükleme hatası</td></tr>');
+        }
+    });
+}
+
+// Sayfa yüklendiğinde son işlemleri yükle
+$(document).ready(function() {
+    loadRecentTransactions();
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}QR Kod ile Ödünç Alma - Kütüphane{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1><i class="fas fa-qrcode"></i> QR Kod ile Ödünç Alma</h1>
+                <p class="text-muted">Mobil cihazınızla QR kod tarayarak hızlı ödünç alma/iade yapın</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Kod Oluşturma Bölümü -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-qrcode"></i> QR Kod Oluştur</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div id="qrCodeContainer" class="mb-4">
+                        <div class="qr-placeholder">
+                            <i class="fas fa-qrcode fa-5x text-muted"></i>
+                            <p class="mt-3 text-muted">QR kod oluşturmak için butona tıklayın</p>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="generateQRCode()" id="generateBtn">
+                        <i class="fas fa-plus"></i> QR Kod Oluştur
+                    </button>
+                    <div id="qrInfo" class="mt-3 d-none">
+                        <div class="alert alert-info">
+                            <i class="fas fa-clock"></i> 
+                            <strong>Geçerlilik Süresi:</strong> <span id="expiryTime"></span>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle"></i> 
+                            QR kod 30 dakika geçerlidir. Mobil QR tarayıcıda kullanın.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Nasıl Kullanılır?</h5>
+                </div>
+                <div class="card-body">
+                    <div class="step-guide">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h6>QR Kod Oluşturun</h6>
+                                <p>Yukarıdaki "QR Kod Oluştur" butonuna tıklayın</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h6>Mobil QR Tarayıcıya Gidin</h6>
+                                <p>Mobil QR tarayıcı sayfasına gidin</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h6>Kitap QR Kodu Tarayın</h6>
+                                <p>Kitabın QR kodunu telefonunuzla tarayın</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h6>İşlemi Tamamlayın</h6>
+                                <p>Ödünç alma veya iade işlemini tamamlayın</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <a href="/mobile-qr-scanner" class="btn btn-success btn-block">
+                            <i class="fas fa-mobile-alt"></i> Mobil QR Tarayıcıya Git
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobil QR Tarayıcı Durumu -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-mobile-alt"></i> Mobil QR Tarayıcı Durumu</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="device-status">
+                                <div class="status-indicator online">
+                                    <i class="fas fa-circle"></i>
+                                </div>
+                                <div class="device-info">
+                                    <h6>QR Kod Tarama</h6>
+                                    <small class="text-success">Aktif</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="device-status">
+                                <div class="status-indicator online">
+                                    <i class="fas fa-circle"></i>
+                                </div>
+                                <div class="device-info">
+                                    <h6>Ödünç Alma/İade</h6>
+                                    <small class="text-success">Aktif</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Son Kullanımlar -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Son QR Kod Kullanımlarım</h5>
+                </div>
+                <div class="card-body">
+                    <div id="qrHistory">
+                        <!-- QR kod geçmişi buraya yüklenecek -->
+                    </div>
+                    <div id="loadingHistory" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Yükleniyor...</span>
+                        </div>
+                    </div>
+                    <div id="noHistoryFound" class="text-center d-none">
+                        <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                        <h5>Henüz QR kod kullanımı yok</h5>
+                        <p class="text-muted">İlk QR kodunuzu oluşturup mobil QR tarayıcıda kullanın.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Kod Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-qrcode"></i> QR Kod
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qrCodeDisplay"></div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-clock"></i> 
+                        Geçerlilik: <span id="modalExpiryTime"></span>
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-primary" onclick="downloadQR()">
+                    <i class="fas fa-download"></i> İndir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.qr-placeholder {
+    padding: 3rem;
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    background: #f8f9fa;
+}
+
+.step-guide {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.step-content h6 {
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.step-content p {
+    margin-bottom: 0;
+    color: #666;
+}
+
+.device-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.status-indicator.online {
+    background: #28a745;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+}
+
+.status-indicator.offline {
+    background: #dc3545;
+    box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+}
+
+.device-info h6 {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.device-info small {
+    font-size: 0.8rem;
+}
+
+#qrCodeContainer {
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-code {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    background: white;
+}
+
+.qr-history-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.qr-history-item:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.qr-history-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.qr-history-icon.used {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.qr-history-icon.expired {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+}
+
+.qr-history-info {
+    flex: 1;
+}
+
+.qr-history-info h6 {
+    margin-bottom: 0.25rem;
+}
+
+.qr-history-info small {
+    color: #666;
+}
+
+.qr-history-status {
+    text-align: right;
+}
+
+.status-badge {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+let currentQRCode = null;
+
+// Sayfa yüklendiğinde
+$(document).ready(function() {
+    loadQRHistory();
+});
+
+// QR kod oluştur
+function generateQRCode() {
+    $('#generateBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Oluşturuluyor...');
+    
+    fetch('/api/qr/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentQRCode = data;
+            displayQRCode(data.qr_url);
+            updateQRInfo(data.expiry_time);
+            $('#qrInfo').removeClass('d-none');
+            startCountdown(data.expires_in * 60); // saniyeye çevir
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('QR kod oluşturulurken hata oluştu.', 'danger');
+    })
+    .finally(() => {
+        $('#generateBtn').prop('disabled', false).html('<i class="fas fa-plus"></i> QR Kod Oluştur');
+    });
+}
+
+// QR kodu göster
+function displayQRCode(qrUrl) {
+    const container = $('#qrCodeContainer');
+    container.empty();
+    
+    QRCode.toCanvas(container[0], qrUrl, {
+        width: 250,
+        height: 250,
+        margin: 2,
+        color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+        }
+    }, function(error) {
+        if (error) {
+            console.error('QR kod oluşturma hatası:', error);
+            showAlert('QR kod oluşturulamadı.', 'danger');
+        }
+    });
+    
+    // QR kodu modal'da da göster
+    const modalContainer = $('#qrCodeDisplay');
+    modalContainer.empty();
+    
+    QRCode.toCanvas(modalContainer[0], qrUrl, {
+        width: 200,
+        height: 200,
+        margin: 2,
+        color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+        }
+    });
+    
+    $('#qrModal').modal('show');
+}
+
+// QR kod bilgilerini güncelle
+function updateQRInfo(expiryTime) {
+    $('#expiryTime').text(expiryTime);
+    $('#modalExpiryTime').text(expiryTime);
+}
+
+// Geri sayım başlat
+function startCountdown(seconds) {
+    const countdownElement = $('#expiryTime');
+    const interval = setInterval(() => {
+        seconds--;
+        
+        if (seconds <= 0) {
+            clearInterval(interval);
+            countdownElement.text('Süresi doldu');
+            $('#qrInfo .alert-warning').removeClass('alert-warning').addClass('alert-danger')
+                .html('<i class="fas fa-exclamation-triangle"></i> QR kod süresi doldu. Yeni kod oluşturun.');
+            return;
+        }
+        
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        countdownElement.text(`${minutes}:${remainingSeconds.toString().padStart(2, '0')}`);
+    }, 1000);
+}
+
+// QR kodu indir
+function downloadQR() {
+    if (!currentQRCode) return;
+    
+    const canvas = document.querySelector('#qrCodeDisplay canvas');
+    if (canvas) {
+        const link = document.createElement('a');
+        link.download = `qr-code-${Date.now()}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+}
+
+// QR kod geçmişini yükle
+function loadQRHistory() {
+    $('#loadingHistory').removeClass('d-none');
+    $('#qrHistory').empty();
+    $('#noHistoryFound').addClass('d-none');
+    
+    // Bu fonksiyon gerçek API'den veri çekecek
+    // Şimdilik örnek veri gösteriyoruz
+    setTimeout(() => {
+        const historyData = [
+            {
+                id: 1,
+                created_at: '2025-02-11 14:30',
+                used_at: '2025-02-11 14:35',
+                status: 'used',
+                device: 'Cihaz 1 - Giriş'
+            },
+            {
+                id: 2,
+                created_at: '2025-02-10 10:15',
+                used_at: null,
+                status: 'expired',
+                device: null
+            }
+        ];
+        
+        displayQRHistory(historyData);
+        $('#loadingHistory').addClass('d-none');
+    }, 1000);
+}
+
+// QR kod geçmişini göster
+function displayQRHistory(history) {
+    const container = $('#qrHistory');
+    
+    if (history.length === 0) {
+        $('#noHistoryFound').removeClass('d-none');
+        return;
+    }
+    
+    history.forEach(item => {
+        const statusClass = item.status === 'used' ? 'used' : 'expired';
+        const statusText = item.status === 'used' ? 'Kullanıldı' : 'Süresi Doldu';
+        const statusBadgeClass = item.status === 'used' ? 'success' : 'secondary';
+        
+        const historyItem = `
+            <div class="qr-history-item">
+                <div class="qr-history-icon ${statusClass}">
+                    <i class="fas fa-${item.status === 'used' ? 'check' : 'clock'}"></i>
+                </div>
+                <div class="qr-history-info">
+                    <h6>QR Kod #${item.id}</h6>
+                    <small>Oluşturulma: ${item.created_at}</small>
+                    ${item.used_at ? `<br><small>Kullanım: ${item.used_at}</small>` : ''}
+                    ${item.device ? `<br><small>Cihaz: ${item.device}</small>` : ''}
+                </div>
+                <div class="qr-history-status">
+                    <span class="badge badge-${statusBadgeClass} status-badge">${statusText}</span>
+                </div>
+            </div>
+        `;
+        container.append(historyItem);
+    });
+}
+</script>
+{% endblock %} 

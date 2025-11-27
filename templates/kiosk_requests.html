@@ -1,0 +1,570 @@
+{% extends 'base.html' %}
+{% block title %}Kiosk Talepleri{% endblock %}
+{% block content %}
+<script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-clipboard-check text-primary"></i>
+                        Kiosk Talepleri
+                    </h1>
+                    <p class="text-muted">Self-check sisteminden gelen ödünç alma taleplerini yönetin</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" onclick="refreshRequests()">
+                        <i class="bi bi-arrow-clockwise"></i> Yenile
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-funnel"></i> Filtrele
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="filterRequests('')">Tümü</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="filterRequests('pending')">Bekleyen</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="filterRequests('approved')">Onaylanan</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="filterRequests('rejected')">Reddedilen</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="filterRequests('completed')">Tamamlanan</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- İstatistik Kartları -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="bi bi-hourglass-split display-6 text-warning mb-2"></i>
+                    <h3 class="mb-0" id="pendingCount">0</h3>
+                    <small class="text-muted">Bekleyen</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle display-6 text-success mb-2"></i>
+                    <h3 class="mb-0" id="approvedCount">0</h3>
+                    <small class="text-muted">Onaylanan</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="bi bi-x-circle display-6 text-danger mb-2"></i>
+                    <h3 class="mb-0" id="rejectedCount">0</h3>
+                    <small class="text-muted">Reddedilen</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+                <div class="card-body text-center">
+                    <i class="bi bi-clipboard-check display-6 text-primary mb-2"></i>
+                    <h3 class="mb-0" id="completedCount">0</h3>
+                    <small class="text-muted">Tamamlanan</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Talepler Tablosu -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul"></i> 
+                        Talep Listesi
+                        <span class="badge bg-secondary ms-2" id="totalRequests">0</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tarih/Saat</th>
+                                    <th>Üye</th>
+                                    <th>Kitap</th>
+                                    <th>Tür</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Yükleniyor...</span>
+                                        </div>
+                                        <p class="text-muted mt-2">Talepler yükleniyor...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <nav>
+                        <ul class="pagination pagination-sm justify-content-center mb-0" id="pagination">
+                            <!-- Sayfalama buraya gelecek -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Onay Modalı -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle text-success"></i>
+                    Talebi Onayla
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="approveRequestDetails"></div>
+                <div class="alert alert-success">
+                    <i class="bi bi-info-circle"></i>
+                    Bu talebi onayladığınızda, kitap otomatik olarak üyeye ödünç verilecektir.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success" id="confirmApprove">
+                    <i class="bi bi-check"></i> Onayla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Red Modalı -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-x-circle text-danger"></i>
+                    Talebi Reddet
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="rejectRequestDetails"></div>
+                <div class="mb-3">
+                    <label class="form-label">Red Nedeni</label>
+                    <textarea class="form-control" id="rejectionReason" rows="3" 
+                              placeholder="Talebin neden reddedildiğini açıklayın..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-danger" id="confirmReject">
+                    <i class="bi bi-x"></i> Reddet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilter = '';
+let selectedRequestId = null;
+
+$(document).ready(function() {
+    loadRequests();
+    updateStatistics();
+    
+    // Modal event listeners
+    $('#confirmApprove').on('click', function() {
+        approveRequest(selectedRequestId);
+    });
+    
+    $('#confirmReject').on('click', function() {
+        rejectRequest(selectedRequestId);
+    });
+});
+
+function loadRequests(page = 1, status = '') {
+    currentPage = page;
+    currentFilter = status;
+    
+    $.ajax({
+        url: '/api/admin/kiosk-requests',
+        method: 'GET',
+        data: {
+            page: page,
+            per_page: 20,
+            status: status
+        },
+        success: function(response) {
+            if (response.success) {
+                displayRequests(response.requests);
+                updatePagination(response.current_page || 1, response.pages || 1, response.total || 0);
+                updateStatistics();
+            } else {
+                showAlert('Talepler yüklenemedi: ' + response.message, 'danger');
+            }
+        },
+        error: function(xhr) {
+            console.error('Kiosk talepleri yükleme hatası:', xhr);
+            showAlert('Bağlantı hatası oluştu', 'danger');
+        }
+    });
+}
+
+function displayRequests(requests) {
+    const tbody = $('#requestsTableBody');
+    tbody.empty();
+    
+    if (requests.length === 0) {
+        tbody.html(`
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Henüz talep bulunmuyor</p>
+                </td>
+            </tr>
+        `);
+        return;
+    }
+    
+    requests.forEach(function(request) {
+        const statusBadge = getStatusBadge(request.status);
+        const actionButtons = getActionButtons(request);
+        
+        const row = `
+            <tr>
+                <td><span class="badge bg-light text-dark">#${request.id}</span></td>
+                <td>
+                    <small class="text-muted">${request.created_at}</small>
+                </td>
+                <td>
+                    <div>
+                        <strong>${request.member_name || 'Bilinmeyen'}</strong><br>
+                        <small class="text-muted">No: ${request.member_number || 'N/A'} | ${request.member_class || 'N/A'}</small>
+                    </div>
+                </td>
+                <td>
+                    <div>
+                        <strong>${request.book_title || 'Bilinmeyen'}</strong><br>
+                        <small class="text-muted">${request.book_authors || 'N/A'}</small><br>
+                        <small class="text-muted">ISBN: ${request.isbn || 'N/A'}</small>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge ${request.request_type === 'borrow' ? 'bg-primary' : 'bg-success'}">
+                        ${request.request_type === 'borrow' ? 'Ödünç' : 'İade'}
+                    </span>
+                </td>
+                <td>${statusBadge}</td>
+                <td>${actionButtons}</td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'pending': '<span class="badge bg-warning">Bekliyor</span>',
+        'approved': '<span class="badge bg-success">Onaylandı</span>',
+        'rejected': '<span class="badge bg-danger">Reddedildi</span>',
+        'completed': '<span class="badge bg-primary">Tamamlandı</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">Bilinmeyen</span>';
+}
+
+function getActionButtons(request) {
+    if (request.status === 'pending') {
+        return `
+            <div class="btn-group btn-group-sm d-flex flex-column flex-md-row gap-1">
+                <button class="btn btn-success btn-sm" onclick="approveDirect(${request.id})" title="Onayla">
+                    <i class="bi bi-check-circle"></i> <span class="d-none d-md-inline">Onayla</span>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="rejectDirect(${request.id})" title="Reddet">
+                    <i class="bi bi-x-circle"></i> <span class="d-none d-md-inline">Reddet</span>
+                </button>
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteRequest(${request.id})" title="Sil">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+    } else {
+        const statusMap = {
+            'approved': '<span class="badge bg-success fs-6 px-2 py-1">Onaylandı</span>',
+            'rejected': '<span class="badge bg-danger fs-6 px-2 py-1">Reddedildi</span>',
+            'completed': '<span class="badge bg-primary fs-6 px-2 py-1">Tamamlandı</span>'
+        };
+        return `
+            <div class="d-flex gap-1 align-items-center">
+                ${statusMap[request.status] || '<span class="badge bg-secondary fs-6 px-2 py-1">İşlenmiş</span>'}
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteRequest(${request.id})" title="Sil">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`;
+    }
+}
+
+function approveDirect(requestId) {
+    // Onay için doğrulama
+    if (confirm('Bu talebi onaylamak istediğinizden emin misiniz?')) {
+        approveRequest(requestId);
+    }
+}
+
+function rejectDirect(requestId) {
+    // Red modalını aç
+    selectedRequestId = requestId;
+    $('#rejectionReason').val('');
+    $('#rejectModal').modal('show');
+}
+
+function approveRequest(requestId) {
+    // Butonun HTML'ini güncelle (eğer varsa)
+    const approveBtn = $(`button[onclick="approveDirect(${requestId})"]`);
+    if (approveBtn.length) {
+        const originalHtml = approveBtn.html();
+        approveBtn.html('<span class="spinner-border spinner-border-sm me-1"></span>Onaylanıyor...').prop('disabled', true);
+    }
+    
+    $.ajax({
+        url: `/api/admin/kiosk-request/${requestId}/approve`,
+        method: 'POST',
+        contentType: 'application/json',
+        success: function(response) {
+            if (response.success) {
+                $('#approveModal').modal('hide');
+                showAlert('Talep başarıyla onaylandı ve ödünç verildi!', 'success');
+                loadRequests(currentPage, currentFilter);
+                updateStatistics();
+            } else {
+                showAlert('Onaylama hatası: ' + response.message, 'danger');
+            }
+        },
+        error: function(xhr) {
+            const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : 'Bağlantı hatası oluştu';
+            showAlert('Onaylama hatası: ' + errorMsg, 'danger');
+        },
+        complete: function() {
+            // Buton durumunu eski haline getir
+            if (approveBtn.length) {
+                approveBtn.html('<i class="bi bi-check-circle"></i> Onayla').prop('disabled', false);
+            }
+        }
+    });
+}
+
+function rejectRequest(requestId) {
+    const reason = $('#rejectionReason').val().trim();
+    
+    if (!reason) {
+        showAlert('Lütfen red nedenini belirtin', 'warning');
+        return;
+    }
+    
+    // Yükleniyor gösterici
+    const confirmBtn = $('#confirmReject');
+    const originalText = confirmBtn.html();
+    confirmBtn.html('<span class="spinner-border spinner-border-sm me-2"></span>İşleniyor...').prop('disabled', true);
+    
+    $.ajax({
+        url: `/api/admin/kiosk-request/${requestId}/reject`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ reason: reason }),
+        success: function(response) {
+            if (response.success) {
+                $('#rejectModal').modal('hide');
+                showAlert('Talep başarıyla reddedildi', 'success');
+                loadRequests(currentPage, currentFilter);
+                updateStatistics();
+                $('#rejectionReason').val(''); // Temizle
+            } else {
+                showAlert('Reddetme hatası: ' + response.message, 'danger');
+            }
+        },
+        error: function() {
+            showAlert('Bağlantı hatası oluştu', 'danger');
+        },
+        complete: function() {
+            // Buton durumunu eski haline getir
+            confirmBtn.html(originalText).prop('disabled', false);
+        }
+    });
+}
+
+function deleteRequest(requestId) {
+    if (!confirm('Bu talebi silmek istediğinize emin misiniz?')) return;
+    $.ajax({
+        url: `/api/admin/kiosk-request/${requestId}`,
+        method: 'DELETE',
+        success: function(response) {
+            if (response.success) {
+                showAlert('Talep silindi', 'success');
+                loadRequests(currentPage, currentFilter);
+                updateStatistics();
+            } else {
+                showAlert('Silme hatası: ' + response.message, 'danger');
+            }
+        },
+        error: function(xhr) {
+            const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : 'Bağlantı hatası oluştu';
+            showAlert('Silme hatası: ' + errorMsg, 'danger');
+        }
+    });
+}
+
+function updateStatistics() {
+    // İstatistikleri güncelle
+    $.ajax({
+        url: '/api/admin/kiosk-requests',
+        method: 'GET',
+        data: { per_page: 1000 }, // Tüm kayıtları al
+        success: function(response) {
+            if (response.success) {
+                const stats = {
+                    pending: 0,
+                    approved: 0,
+                    rejected: 0,
+                    completed: 0
+                };
+                
+                response.requests.forEach(function(request) {
+                    stats[request.status]++;
+                });
+                
+                $('#pendingCount').text(stats.pending);
+                $('#approvedCount').text(stats.approved);
+                $('#rejectedCount').text(stats.rejected);
+                $('#completedCount').text(stats.completed);
+                $('#totalRequests').text(response.total);
+            }
+        },
+        error: function() {
+            console.error('İstatistikler yüklenemedi');
+        }
+    });
+}
+
+function updatePagination(currentPage, totalPages, totalItems) {
+    const pagination = $('#pagination');
+    pagination.empty();
+    
+    if (totalPages <= 1) return;
+    
+    // Önceki
+    if (currentPage > 1) {
+        pagination.append(`
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadRequests(${currentPage - 1}, '${currentFilter}')">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+        `);
+    }
+    
+    // Sayfa numaraları
+    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+        pagination.append(`
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadRequests(${i}, '${currentFilter}')">${i}</a>
+            </li>
+        `);
+    }
+    
+    // Sonraki
+    if (currentPage < totalPages) {
+        pagination.append(`
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="loadRequests(${currentPage + 1}, '${currentFilter}')">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        `);
+    }
+}
+
+function filterRequests(status) {
+    loadRequests(1, status);
+    updateStatistics();
+}
+
+function refreshRequests() {
+    loadRequests(currentPage, currentFilter);
+    updateStatistics();
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show position-fixed" 
+             style="top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('body').append(alertHtml);
+    
+    // 5 saniye sonra otomatik kaldır
+    setTimeout(function() {
+        $('.alert').alert('close');
+    }, 5000);
+}
+</script>
+
+<style>
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.table th {
+    font-weight: 600;
+    border-top: none;
+}
+
+.btn-group-sm .btn {
+    padding: 0.375rem 0.75rem;
+    margin: 0 2px;
+    border-radius: 6px;
+}
+
+.btn-group-sm .btn:first-child {
+    margin-left: 0;
+}
+
+.btn-group-sm .btn:last-child {
+    margin-right: 0;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.125rem 0.25rem;
+    }
+}
+</style>
+{% endblock %}

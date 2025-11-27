@@ -1,0 +1,485 @@
+/* Dark Mode Styles - Gelişmiş ve Güvenli Versiyon */
+
+/* Dark mode değişkenleri */
+:root {
+    --dark-bg: #1a1a1a;
+    --dark-surface: #2d2d2d;
+    --dark-surface-2: #404040;
+    --dark-text: #e0e0e0;
+    --dark-text-secondary: #b0b0b0;
+    --dark-border: #555555;
+    --dark-primary: #4a90e2;
+    --dark-success: #5cb85c;
+    --dark-warning: #f0ad4e;
+    --dark-danger: #d9534f;
+    --dark-info: #5bc0de;
+}
+
+/* Dark mode aktif olduğunda */
+body.dark-mode {
+    background-color: var(--dark-bg) !important;
+    color: var(--dark-text) !important;
+    transition: background-color 0.8s cubic-bezier(0.4,0,0.2,1), color 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Navbar dark mode */
+body.dark-mode .navbar {
+    background-color: var(--dark-surface) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+}
+
+body.dark-mode .navbar-brand,
+body.dark-mode .nav-link {
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .nav-link:hover {
+    color: var(--dark-primary) !important;
+}
+
+body.dark-mode .dropdown-menu {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+}
+
+body.dark-mode .dropdown-item {
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .dropdown-item:hover {
+    background-color: var(--dark-surface-2) !important;
+    color: var(--dark-primary) !important;
+}
+
+/* Card ve paneller */
+body.dark-mode .card {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .card-header {
+    background-color: var(--dark-surface-2) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Tablolar */
+body.dark-mode .table {
+    background-color: var(--dark-surface) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .table th {
+    background-color: var(--dark-surface-2) !important;
+    border-color: var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .table td {
+    border-color: var(--dark-border) !important;
+}
+
+body.dark-mode .table-hover tbody tr:hover {
+    background-color: var(--dark-surface-2) !important;
+}
+
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Form elementleri */
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: var(--dark-surface) !important;
+    border-color: var(--dark-primary) !important;
+    color: var(--dark-text) !important;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25) !important;
+}
+
+body.dark-mode .form-control::placeholder {
+    color: var(--dark-text-secondary) !important;
+}
+
+body.dark-mode .form-label {
+    color: var(--dark-text) !important;
+}
+
+/* Butonlar */
+body.dark-mode .btn-outline-primary {
+    color: var(--dark-primary) !important;
+    border-color: var(--dark-primary) !important;
+}
+
+body.dark-mode .btn-outline-primary:hover {
+    background-color: var(--dark-primary) !important;
+    border-color: var(--dark-primary) !important;
+}
+
+body.dark-mode .btn-outline-secondary {
+    color: var(--dark-text-secondary) !important;
+    border-color: var(--dark-border) !important;
+}
+
+body.dark-mode .btn-outline-secondary:hover {
+    background-color: var(--dark-surface-2) !important;
+    border-color: var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Modaller */
+body.dark-mode .modal-content {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .modal-header {
+    background-color: var(--dark-surface-2) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+}
+
+body.dark-mode .modal-footer {
+    background-color: var(--dark-surface-2) !important;
+    border-top: 1px solid var(--dark-border) !important;
+}
+
+body.dark-mode .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Alert ve bildirimler */
+body.dark-mode .alert {
+    border: 1px solid var(--dark-border) !important;
+}
+
+body.dark-mode .alert-primary {
+    background-color: rgba(74, 144, 226, 0.2) !important;
+    border-color: var(--dark-primary) !important;
+    color: var(--dark-primary) !important;
+}
+
+body.dark-mode .alert-success {
+    background-color: rgba(92, 184, 92, 0.2) !important;
+    border-color: var(--dark-success) !important;
+    color: var(--dark-success) !important;
+}
+
+body.dark-mode .alert-warning {
+    background-color: rgba(240, 173, 78, 0.2) !important;
+    border-color: var(--dark-warning) !important;
+    color: var(--dark-warning) !important;
+}
+
+body.dark-mode .alert-danger {
+    background-color: rgba(217, 83, 79, 0.2) !important;
+    border-color: var(--dark-danger) !important;
+    color: var(--dark-danger) !important;
+}
+
+body.dark-mode .alert-info {
+    background-color: rgba(91, 192, 222, 0.2) !important;
+    border-color: var(--dark-info) !important;
+    color: var(--dark-info) !important;
+}
+
+/* Toast bildirimleri */
+body.dark-mode .toast {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .toast-header {
+    background-color: var(--dark-surface-2) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Pagination */
+body.dark-mode .page-link {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .page-link:hover {
+    background-color: var(--dark-surface-2) !important;
+    border-color: var(--dark-primary) !important;
+    color: var(--dark-primary) !important;
+}
+
+body.dark-mode .page-item.active .page-link {
+    background-color: var(--dark-primary) !important;
+    border-color: var(--dark-primary) !important;
+}
+
+body.dark-mode .page-item.disabled .page-link {
+    background-color: var(--dark-surface-2) !important;
+    border-color: var(--dark-border) !important;
+    color: var(--dark-text-secondary) !important;
+}
+
+/* Breadcrumb */
+body.dark-mode .breadcrumb {
+    background-color: var(--dark-surface) !important;
+}
+
+body.dark-mode .breadcrumb-item a {
+    color: var(--dark-primary) !important;
+}
+
+body.dark-mode .breadcrumb-item.active {
+    color: var(--dark-text-secondary) !important;
+}
+
+/* List group */
+body.dark-mode .list-group-item {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .list-group-item:hover {
+    background-color: var(--dark-surface-2) !important;
+}
+
+body.dark-mode .list-group-item.active {
+    background-color: var(--dark-primary) !important;
+    border-color: var(--dark-primary) !important;
+}
+
+/* Progress bar */
+body.dark-mode .progress {
+    background-color: var(--dark-surface-2) !important;
+}
+
+/* Badge */
+body.dark-mode .badge {
+    color: var(--dark-text) !important;
+}
+
+/* Text renkleri */
+body.dark-mode .text-muted {
+    color: var(--dark-text-secondary) !important;
+}
+
+body.dark-mode .text-dark {
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .text-light {
+    color: var(--dark-text-secondary) !important;
+}
+
+/* Border renkleri */
+body.dark-mode .border {
+    border-color: var(--dark-border) !important;
+}
+
+body.dark-mode .border-top {
+    border-top-color: var(--dark-border) !important;
+}
+
+body.dark-mode .border-bottom {
+    border-bottom-color: var(--dark-border) !important;
+}
+
+body.dark-mode .border-left {
+    border-left-color: var(--dark-border) !important;
+}
+
+body.dark-mode .border-right {
+    border-right-color: var(--dark-border) !important;
+}
+
+/* Background renkleri */
+body.dark-mode .bg-light {
+    background-color: var(--dark-surface) !important;
+}
+
+body.dark-mode .bg-white {
+    background-color: var(--dark-surface) !important;
+}
+
+body.dark-mode .bg-gray-100 {
+    background-color: var(--dark-surface-2) !important;
+}
+
+/* Footer */
+body.dark-mode footer {
+    background-color: var(--dark-surface) !important;
+    border-top: 1px solid var(--dark-border) !important;
+}
+
+/* Scrollbar dark mode */
+body.dark-mode ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+    background: var(--dark-surface);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: var(--dark-border);
+    border-radius: 6px;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: var(--dark-text-secondary);
+}
+
+/* Dark mode toggle butonu */
+#darkModeToggle {
+    transition: all 0.3s ease;
+    border: none !important;
+    background: none !important;
+}
+
+body.dark-mode #darkModeToggle i {
+    transform: rotate(180deg);
+}
+
+#darkModeToggle:hover {
+    transform: scale(1.1);
+}
+
+/* Özel dark mode ikonları */
+body.dark-mode #darkModeToggle i::before {
+    content: "\f185"; /* sun icon */
+}
+
+/* Loading spinner dark mode */
+body.dark-mode .spinner-border {
+    color: var(--dark-primary) !important;
+}
+
+/* Emergency reset button dark mode */
+body.dark-mode #emergencyReset {
+    background-color: var(--dark-danger) !important;
+    border-color: var(--dark-danger) !important;
+}
+
+/* Network status dark mode */
+body.dark-mode #networkStatus {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-warning) !important;
+    color: var(--dark-warning) !important;
+}
+
+/* Dropdown toggle dark mode */
+body.dark-mode .dropdown-toggle::after {
+    border-top-color: var(--dark-text) !important;
+}
+
+/* Input group dark mode */
+body.dark-mode .input-group-text {
+    background-color: var(--dark-surface-2) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Accordion dark mode */
+body.dark-mode .accordion-item {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+}
+
+body.dark-mode .accordion-header button {
+    background-color: var(--dark-surface) !important;
+    color: var(--dark-text) !important;
+    border: none !important;
+}
+
+body.dark-mode .accordion-body {
+    background-color: var(--dark-surface) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Popover dark mode */
+body.dark-mode .popover {
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .popover-header {
+    background-color: var(--dark-surface-2) !important;
+    border-bottom: 1px solid var(--dark-border) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Tooltip dark mode */
+body.dark-mode .tooltip-inner {
+    background-color: var(--dark-surface-2) !important;
+    color: var(--dark-text) !important;
+}
+
+/* Offcanvas dark mode */
+body.dark-mode .offcanvas {
+    background-color: var(--dark-surface) !important;
+    color: var(--dark-text) !important;
+}
+
+body.dark-mode .offcanvas-header {
+    border-bottom: 1px solid var(--dark-border) !important;
+}
+
+/* Responsive düzeltmeler */
+@media (max-width: 768px) {
+    body.dark-mode .navbar-toggler {
+        border-color: var(--dark-border) !important;
+    }
+    
+    body.dark-mode .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28224, 224, 224, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+    }
+}
+
+/* Animasyonlar */
+body.dark-mode * {
+    transition: background-color 0.8s cubic-bezier(0.4,0,0.2,1), color 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Print mode - dark mode'da yazdırmada problemler olmasın */
+@media print {
+    body.dark-mode {
+        background-color: white !important;
+        color: black !important;
+    }
+    
+    body.dark-mode * {
+        background-color: white !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+}
+
+/* High contrast mode desteği */
+@media (prefers-contrast: high) {
+    body.dark-mode {
+        --dark-bg: #000000;
+        --dark-surface: #1a1a1a;
+        --dark-surface-2: #333333;
+        --dark-text: #ffffff;
+        --dark-text-secondary: #cccccc;
+        --dark-border: #666666;
+    }
+}
+
+/* Reduced motion desteği */
+@media (prefers-reduced-motion: reduce) {
+    body.dark-mode * {
+        transition: none !important;
+        animation: none !important;
+    }
+}

@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+
+{% block title %}Arama - {{ query }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex align-items-center mb-4 gap-3">
+                <h2 class="mb-0"><i class="bi bi-search"></i> Arama</h2>
+                <div class="flex-grow-1">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input id="globalSearchInput" type="text" class="form-control" value="{{ query }}" placeholder="Kitap adı, yazar, ISBN veya yayınevi ara...">
+                    </div>
+                    <div id="search-suggestions" class="search-suggestions" style="display:none;"></div>
+                </div>
+                <a href="#advancedPane" class="btn btn-outline-secondary" data-bs-toggle="tab"><i class="bi bi-sliders"></i> Gelişmiş</a>
+            </div>
+            
+            <!-- Arama Formu - Sekmeli -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="searchTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="simple-tab" data-bs-toggle="tab" data-bs-target="#simplePane" type="button" role="tab">Basit Arama</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advancedPane" type="button" role="tab">Gelişmiş Filtreleme</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <!-- Basit Arama -->
+                        <div class="tab-pane fade show active" id="simplePane" role="tabpanel">
+                            <form method="GET" action="{{ url_for('search') }}">
+                                <div class="row align-items-end g-3">
+                                    <div class="col-md-8">
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                            <input type="text" class="form-control" name="q" value="{{ query }}" placeholder="Kitap adı, yazar, ISBN veya yayınevi ara...">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select class="form-control" name="type">
+                                            <option value="all" {% if search_type == 'all' %}selected{% endif %}>Tümü</option>
+                                            <option value="books" {% if search_type == 'books' %}selected{% endif %}>Kitaplar</option>
+                                            {% if current_user.is_authenticated and current_user.role in ['admin', 'librarian'] %}
+                                            <option value="members" {% if search_type == 'members' %}selected{% endif %}>Üyeler</option>
+                                            {% endif %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="titleOnly" name="title_only" value="1" {% if request.args.get('title_only') == '1' %}checked{% endif %}>
+                                            <label class="form-check-label" for="titleOnly">Sadece başlıkta ara</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Ara</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <!-- Gelişmiş Filtreleme -->
+                        <div class="tab-pane fade" id="advancedPane" role="tabpanel">
+                            <form id="advancedSearchForm">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label for="isbn" class="form-label">ISBN</label>
+                                        <input type="text" class="form-control" id="isbn" name="isbn" placeholder="978...">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="title" class="form-label">Kitap Adı</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="title" name="title" placeholder="Simyacı">
+                                            <select class="form-select" id="title_match_type" name="title_match_type" style="max-width: 140px">
+                                                <option value="contains" selected>İçerir</option>
+                                                <option value="startswith">Başlar</option>
+                                                <option value="exact">Tam</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="author" class="form-label">Yazar</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="author" name="author" placeholder="Paulo Coelho">
+                                            <select class="form-select" id="author_match_type" name="author_match_type" style="max-width: 140px">
+                                                <option value="contains" selected>İçerir</option>
+                                                <option value="startswith">Başlar</option>
+                                                <option value="exact">Tam</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="publisher" class="form-label">Yayınevi</label>
+                                        <input type="text" class="form-control" id="publisher" name="publisher">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="languages" class="form-label">Dil</label>
+                                        <input type="text" class="form-control" id="languages" name="languages" placeholder="Türkçe">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="year_from" class="form-label">Yıl (Başlangıç)</label>
+                                        <input type="number" class="form-control" id="year_from" name="year_from" min="1900" max="{{ current_year }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="year_to" class="form-label">Yıl (Bitiş)</label>
+                                        <input type="number" class="form-control" id="year_to" name="year_to" min="1900" max="{{ current_year }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="advCategories" class="form-label">Kategoriler</label>
+                                        <select class="form-select" id="advCategories" name="category_ids" multiple size="6">
+                                            {% for cat in categories %}
+                                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <small class="text-muted">CTRL ile birden çok kategori seçebilirsiniz.</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="pages_min" class="form-label">Sayfa (min)</label>
+                                        <input type="number" class="form-control" id="pages_min" name="pages_min" min="1">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="pages_max" class="form-label">Sayfa (max)</label>
+                                        <input type="number" class="form-control" id="pages_max" name="pages_max" min="1">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="quantity_min" class="form-label">Adet (min)</label>
+                                        <input type="number" class="form-control" id="quantity_min" name="quantity_min" min="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="quantity_max" class="form-label">Adet (max)</label>
+                                        <input type="number" class="form-control" id="quantity_max" name="quantity_max" min="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="shelf" class="form-label">Raf</label>
+                                        <input type="text" class="form-control" id="shelf" name="shelf" placeholder="A-1">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="cupboard" class="form-label">Dolap</label>
+                                        <input type="text" class="form-control" id="cupboard" name="cupboard" placeholder="1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="description" class="form-label">Açıklamada Ara</label>
+                                        <input type="text" class="form-control" id="description" name="description" placeholder="anahtar kelime">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="rating_min" class="form-label">Puan (min)</label>
+                                        <input type="number" class="form-control" id="rating_min" name="rating_min" min="0" max="5" step="0.1">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="rating_max" class="form-label">Puan (max)</label>
+                                        <input type="number" class="form-control" id="rating_max" name="rating_max" min="0" max="5" step="0.1">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="borrowed_min" class="form-label">Ödünç Sayısı (min)</label>
+                                        <input type="number" class="form-control" id="borrowed_min" name="borrowed_min" min="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="borrowed_max" class="form-label">Ödünç Sayısı (max)</label>
+                                        <input type="number" class="form-control" id="borrowed_max" name="borrowed_max" min="0">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="barcode" class="form-label">Barkod</label>
+                                        <input type="text" class="form-control" id="barcode" name="barcode">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="edition" class="form-label">Baskı</label>
+                                        <input type="text" class="form-control" id="edition" name="edition">
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <div class="form-check me-3">
+                                            <input class="form-check-input" type="checkbox" id="available_only" name="available_only">
+                                            <label class="form-check-label" for="available_only">Sadece mevcut</label>
+                                        </div>
+                                        <div class="form-check me-3">
+                                            <input class="form-check-input" type="checkbox" id="has_cover" name="has_cover">
+                                            <label class="form-check-label" for="has_cover">Kapak var</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="has_qr" name="has_qr">
+                                            <label class="form-check-label" for="has_qr">QR var</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="sort_by" class="form-label">Sırala</label>
+                                        <select class="form-select" id="sort_by" name="sort_by">
+                                            <option value="title">Başlığa göre</option>
+                                            <option value="authors">Yazara göre</option>
+                                            <option value="publish_date">Yıla göre</option>
+                                            <option value="quantity">Adet</option>
+                                            <option value="available">Mevcut</option>
+                                            <option value="total_borrow_count">Ödünç sayısı</option>
+                                            <option value="average_rating">Puan</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="sort_dir" class="form-label">Yön</label>
+                                        <select class="form-select" id="sort_dir" name="sort_dir">
+                                            <option value="desc">Azalan</option>
+                                            <option value="asc">Artan</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="per_page" class="form-label">Sayfa başı</label>
+                                        <select class="form-select" id="per_page" name="per_page">
+                                            <option value="12">12</option>
+                                            <option value="24" selected>24</option>
+                                            <option value="48">48</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mt-3 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Gelişmiş Ara</button>
+                                    <button type="reset" class="btn btn-secondary" id="advReset"><i class="bi bi-x-circle"></i> Temizle</button>
+                                </div>
+                            </form>
+
+                            <!-- Dinamik Sonuçlar -->
+                            <div id="advResultsCard" class="card shadow-sm mt-4" style="display:none;">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-funnel"></i> Gelişmiş Arama Sonuçları</h5>
+                                    <span class="text-muted small" id="advCount"></span>
+                                </div>
+                                <div class="card-body">
+                                    <div id="advancedResults" class="row g-3"></div>
+                                    <nav class="mt-3"><ul id="advancedPagination" class="pagination pagination-sm justify-content-center"></ul></nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sonuçlar -->
+            {% if query %}
+            <div class="alert alert-info mb-4">
+                <i class="bi bi-info-circle"></i>
+                "<strong>{{ query }}</strong>" için <strong>{{ results.total }}</strong> sonuç bulundu.
+            </div>
+            
+            <!-- Kitap Sonuçları -->
+            {% if results.books %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-book"></i> Kitaplar ({{ results.books|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for item in results.books %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <a href="{{ url_for('book_detail', isbn=item.book.isbn) }}" class="text-decoration-none">
+                                            {{ item.book.title }}
+                                        </a>
+                                    </h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="bi bi-person"></i> {{ item.book.authors }}<br>
+                                            <i class="bi bi-building"></i> {{ item.book.publishers }}<br>
+                                            <i class="bi bi-calendar"></i> {{ item.book.publish_date }}
+                                        </small>
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-{{ 'success' if item.available > 0 else 'danger' }}">
+                                            {% if item.available > 0 %}
+                                            {{ item.available }} adet mevcut
+                                            {% else %}
+                                            Mevcut değil
+                                            {% endif %}
+                                        </span>
+                                        <a href="{{ url_for('book_detail', isbn=item.book.isbn) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Detay
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Üye Sonuçları (Sadece admin/librarian) -->
+            {% if results.members and current_user.is_authenticated and current_user.role in ['admin', 'librarian'] %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people"></i> Üyeler ({{ results.members|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Ad Soyad</th>
+                                    <th>Sınıf</th>
+                                    <th>Numara</th>
+                                    <th>E-posta</th>
+                                    <th>Üye Türü</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in results.members %}
+                                <tr>
+                                    <td>{{ member.ad_soyad }}</td>
+                                    <td>{{ member.sinif }}</td>
+                                    <td>{{ member.numara }}</td>
+                                    <td>{{ member.email }}</td>
+                                    <td>{{ member.uye_turu }}</td>
+                                    <td>
+                                        <a href="/members/{{ member.id }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Detay
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if results.total == 0 %}
+            <div class="alert alert-warning text-center">
+                <i class="bi bi-exclamation-triangle"></i>
+                Aramanızla eşleşen sonuç bulunamadı.
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i>
+                Aramak için yukarıdaki formu kullanın.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Gelişmiş arama formu
+document.getElementById('advancedSearchForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const criteria = {};
+    
+    for (let [key, value] of formData.entries()) {
+        if (!value) continue;
+        if (key === 'category_ids') {
+            // Çoklu seçim
+            const select = document.getElementById('advCategories');
+            const ids = Array.from(select.selectedOptions).map(o => parseInt(o.value));
+            if (ids.length) criteria['category_ids'] = ids;
+        } else if (key === 'available_only') {
+            criteria['available_only'] = true;
+        } else if (key === 'has_cover' || key === 'has_qr') {
+            criteria[key] = true;
+        } else {
+            criteria[key] = value;
+        }
+    }
+    
+    try {
+        const response = await fetch('/api/search/advanced', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(criteria)
+        });
+        
+        const result = await response.json();
+        
+        if (result.books) displayAdvancedSearchResults(result.books);
+    } catch (error) {
+        alert('Bir hata oluştu');
+    }
+});
+
+function displayAdvancedSearchResults(books) {
+    // Basit bir sonuç listesi oluştur
+    const container = document.querySelector('#advancedResults') || (function(){
+        const card = document.createElement('div');
+        card.className = 'card shadow-sm mb-4';
+        card.innerHTML = `<div class="card-header"><h5 class="mb-0"><i class="bi bi-funnel"></i> Gelişmiş Arama Sonuçları</h5></div><div class="card-body"><div id="advancedResults" class="row g-3"></div></div>`;
+        document.querySelector('.container-fluid .row .col-12').appendChild(card);
+        return document.getElementById('advancedResults');
+    })();
+    container.innerHTML = '';
+    books.forEach(b => {
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4';
+        col.innerHTML = `<div class="card h-100"><div class="card-body"><h6 class="card-title"><a href="/book/${b.isbn}">${b.title || '(Başlıksız)'}</a></h6><div class="text-muted small">${b.authors || ''}</div><div class="d-flex justify-content-between align-items-center mt-2"><span class="badge ${b.available>0?'bg-success':'bg-danger'}">${b.available>0?b.available+' mevcut':'Mevcut değil'}</span><a class="btn btn-sm btn-outline-primary" href="/book/${b.isbn}"><i class="bi bi-eye"></i> Detay</a></div></div></div>`;
+        container.appendChild(col);
+    });
+}
+
+// Mevcut yıl
+const currentYear = new Date().getFullYear();
+document.getElementById('year_from')?.setAttribute('max', currentYear);
+document.getElementById('year_to')?.setAttribute('max', currentYear);
+</script>
+<style>
+.search-suggestions { position: absolute; z-index: 1000; background: #fff; border: 1px solid #e5e5e5; width: 100%; max-height: 360px; overflow: auto; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+.search-suggestion { padding: 10px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+.search-suggestion:hover, .search-suggestion.active { background: #f6f8fa; }
+.suggestion-group-title { font-weight: 600; color: #6c757d; padding: 8px 12px; border-top: 1px solid #f0f0f0; }
+.suggestion-content .suggestion-title { font-weight: 600; }
+.suggestion-content .suggestion-subtitle { color: #6c757d; font-size: 12px; }
+.suggestion-content .suggestion-meta { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.suggestion-content .category { font-size: 12px; padding: 2px 6px; border-radius: 10px; background: #eef2ff; color: #3b82f6; }
+</style>
+
+<script>
+// SmartSearch entegrasyonu
+window.addEventListener('DOMContentLoaded', () => {
+  window.smartSearch = new SmartSearch('globalSearchInput', 'search-suggestions');
+});
+</script>
+{% endblock %}
+

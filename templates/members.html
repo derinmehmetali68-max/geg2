@@ -1,0 +1,809 @@
+{% extends "base.html" %}
+
+{% block title %}Üyeler - Kütüphane Yönetim Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Başlık ve Butonlar -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-people"></i> Üye Yönetimi</h2>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="showAddMemberModal()">
+                        <i class="bi bi-person-plus"></i> Yeni Üye
+                    </button>
+                    <button class="btn btn-info" onclick="showImportMemberModal()">
+                        <i class="bi bi-upload"></i> Excel Yükle
+                    </button>
+                    <button class="btn btn-warning" onclick="exportMembers()">
+                        <i class="bi bi-download"></i> Excel İndir
+                    </button>
+                    <button class="btn btn-danger" onclick="exportMembersPDF()">
+                        <i class="bi bi-file-earmark-pdf"></i> PDF İndir
+                    </button>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end mb-3 gap-2">
+                <a href="/api/members/qr-bulk" class="btn btn-outline-secondary" target="_blank">
+                    <i class="bi bi-qr-code"></i> Toplu QR Bas
+                </a>
+                <button id="bulkQrBtn" class="btn btn-secondary" type="button">
+                    <i class="bi bi-qr-code"></i> Seçili Olanlar İçin QR Bas
+                </button>
+            </div>
+            
+            <!-- Arama ve Filtreler -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="memberSearch" 
+                                       placeholder="Ad soyad, numara veya sınıf ara...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="classFilter">
+                                <option value="">Tüm Sınıflar</option>
+                                <option value="9">9. Sınıf</option>
+                                <option value="10">10. Sınıf</option>
+                                <option value="11">11. Sınıf</option>
+                                <option value="12">12. Sınıf</option>
+                                <option value="Mezun">Mezun</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="typeFilter">
+                                <option value="">Tüm Türler</option>
+                                <option value="Öğrenci">Öğrenci</option>
+                                <option value="Öğretmen">Öğretmen</option>
+                                <option value="Personel">Personel</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Üye Listesi -->
+            <div class="card mt-4">
+                <ul class="nav nav-tabs" id="memberTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="members-tab" data-bs-toggle="tab" data-bs-target="#members" type="button" role="tab">Üyeler</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="penalized-tab" data-bs-toggle="tab" data-bs-target="#penalized" type="button" role="tab">Cezalılar</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue" type="button" role="tab">Gecikmişler</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="memberTabsContent">
+                    <div class="tab-pane fade show active" id="members" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ad Soyad</th>
+                                    <th>Sınıf</th>
+                                    <th>Numara</th>
+                                    <th>E-posta</th>
+                                     <th>Telefon</th>
+                                    <th>Üye Türü</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membersTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Yükleniyor...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Sayfalama -->
+                    <div id="membersPagination"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="penalized" role="tabpanel">
+                        <div class="d-flex justify-content-end mb-3">
+                            <!-- Removed Excel export button -->
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Ad Soyad</th>
+                                        <th>Numara</th>
+                                        <th>Sınıf</th>
+                                        <th>E-posta</th>
+                                        <th>Ceza Bitiş</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="penalizedTableBody">
+                                    <!-- Cezalılar JS ile yüklenecek -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="overdue" role="tabpanel">
+                        <div class="d-flex justify-content-end mb-3">
+                            <!-- Removed Excel export button -->
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Ad Soyad</th>
+                                        <th>Numara</th>
+                                        <th>Sınıf</th>
+                                        <th>E-posta</th>
+                                        <th>Gecikmiş Kitap</th>
+                                        <th>Son Teslim</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="overdueTableBody">
+                                    <!-- Gecikmişler JS ile yüklenecek -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Yeni Üye Ekleme Modal -->
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yeni Üye Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addMemberForm">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="addMemberName" class="form-label">Ad Soyad</label>
+                            <input type="text" class="form-control" id="addMemberName">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="addMemberClass" class="form-label">Sınıf</label>
+                            <select class="form-select" id="addMemberClass">
+                                <option value="">Seçiniz</option>
+                                <option value="9-A">9-A</option>
+                                <option value="9-B">9-B</option>
+                                <option value="9-C">9-C</option>
+                                <option value="9-D">9-D</option>
+                                <option value="10-A">10-A</option>
+                                <option value="10-B">10-B</option>
+                                <option value="10-C">10-C</option>
+                                <option value="10-D">10-D</option>
+                                <option value="11-A">11-A</option>
+                                <option value="11-B">11-B</option>
+                                <option value="11-C">11-C</option>
+                                <option value="11-D">11-D</option>
+                                <option value="12-A">12-A</option>
+                                <option value="12-B">12-B</option>
+                                <option value="12-C">12-C</option>
+                                <option value="12-D">12-D</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="addMemberNumber" class="form-label">Okul Numarası</label>
+                            <input type="text" class="form-control" id="addMemberNumber">
+                        </div>
+                        <div class="col-12">
+                            <label for="addMemberEmail" class="form-label">E-posta</label>
+                            <input type="email" class="form-control" id="addMemberEmail">
+                        </div>
+                        <div class="col-12">
+                            <label for="addMemberPhone" class="form-label">Telefon</label>
+                            <input type="text" class="form-control" id="addMemberPhone" placeholder="05xx xxx xx xx">
+                        </div>
+                        <div class="col-12">
+                            <label for="addMemberType" class="form-label">Üye Türü</label>
+                            <select class="form-select" id="addMemberType">
+                                <option value="Öğrenci">Öğrenci</option>
+                                <option value="Öğretmen">Öğretmen</option>
+                                <option value="Personel">Personel</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Üye Düzenleme Modal -->
+<div class="modal fade" id="editMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Üye Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editMemberForm">
+                <input type="hidden" id="editMemberId">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="editMemberName" class="form-label">Ad Soyad</label>
+                            <input type="text" class="form-control" id="editMemberName">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editMemberClass" class="form-label">Sınıf</label>
+                            <select class="form-select" id="editMemberClass">
+                                <option value="">Seçiniz</option>
+                                <option value="9-A">9-A</option>
+                                <option value="9-B">9-B</option>
+                                <option value="9-C">9-C</option>
+                                <option value="9-D">9-D</option>
+                                <option value="10-A">10-A</option>
+                                <option value="10-B">10-B</option>
+                                <option value="10-C">10-C</option>
+                                <option value="10-D">10-D</option>
+                                <option value="11-A">11-A</option>
+                                <option value="11-B">11-B</option>
+                                <option value="11-C">11-C</option>
+                                <option value="11-D">11-D</option>
+                                <option value="12-A">12-A</option>
+                                <option value="12-B">12-B</option>
+                                <option value="12-C">12-C</option>
+                                <option value="12-D">12-D</option>
+                                <option value="Mezun">Mezun</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editMemberNumber" class="form-label">Okul Numarası</label>
+                            <input type="text" class="form-control" id="editMemberNumber">
+                        </div>
+                        <div class="col-12">
+                            <label for="editMemberEmail" class="form-label">E-posta</label>
+                            <input type="email" class="form-control" id="editMemberEmail">
+                        </div>
+                        <div class="col-12">
+                            <label for="editMemberPhone" class="form-label">Telefon</label>
+                            <input type="text" class="form-control" id="editMemberPhone" placeholder="05xx xxx xx xx">
+                        </div>
+                        <div class="col-12">
+                            <label for="editMemberType" class="form-label">Üye Türü</label>
+                            <select class="form-select" id="editMemberType">
+                                <option value="Öğrenci">Öğrenci</option>
+                                <option value="Öğretmen">Öğretmen</option>
+                                <option value="Personel">Personel</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Güncelle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Excel İçe Aktarma Modal -->
+<div class="modal fade" id="importMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Excel'den Üye Yükle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="importMemberForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Excel Formatı:</strong><br>
+                        ad_soyad | sinif | numara | email | uye_turu
+                    </div>
+                    <div class="mb-3">
+                        <label for="importMemberFile" class="form-label">Excel Dosyası Seçin</label>
+                        <input type="file" class="form-control" id="importMemberFile" accept=".xlsx,.xls" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Yükle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sayfa yüklendiğinde çalışacak kod - OPTİMİZE EDİLMİŞ
+$(document).ready(function() {
+    console.log('👥 Üye sayfası yükleniyor...');
+    
+    // Üyeleri yükle - async olarak
+    setTimeout(function() {
+        if (typeof loadMembers === 'function') {
+            loadMembers(1);
+        }
+    }, 100);
+    
+    // Event listener'ları ekle - basit
+    $('#classFilter, #typeFilter').on('change', function() {
+        if (typeof loadMembers === 'function') {
+            loadMembers(1);
+        }
+    });
+    
+    console.log('✅ Üye sayfası hazır');
+});
+
+// Modal fonksiyonları
+function showAddMemberModal() {
+    $('#addMemberModal').modal('show');
+}
+
+function showImportMemberModal() {
+    $('#importMemberFile').val('');
+    $('#importMemberModal').modal('show');
+}
+
+// Üye ekleme - inline
+function addMember() {
+    const data = {
+        ad_soyad: $('#addMemberName').val(),
+        sinif: $('#addMemberClass').val(),
+        numara: $('#addMemberNumber').val(),
+        email: $('#addMemberEmail').val(),
+        phone: $('#addMemberPhone').val(),
+        uye_turu: $('#addMemberType').val()
+    };
+    
+    // Eksik bilgiler olsa da kayda izin verilir
+    
+    $.ajax({
+        url: '/api/members',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function() {
+            showToast('Üye eklendi', 'success');
+            $('#addMemberModal').modal('hide');
+            $('#addMemberForm')[0].reset();
+            if (typeof loadMembers === 'function') {
+                loadMembers(currentMemberPage || 1);
+            }
+        },
+        error: function(xhr) {
+            showToast(xhr.responseJSON?.message || 'Ekleme hatası', 'error');
+        }
+    });
+}
+
+// Üye düzenleme - inline
+function editMember(id) {
+    $.ajax({
+        url: `/api/members/${id}`,
+        method: 'GET',
+        timeout: 2000,
+        success: function(member) {
+            $('#editMemberId').val(member.id);
+            $('#editMemberName').val(member.ad_soyad);
+            $('#editMemberClass').val(member.sinif);
+            $('#editMemberNumber').val(member.numara);
+            $('#editMemberEmail').val(member.email);
+            $('#editMemberPhone').val(member.phone || '');
+            $('#editMemberType').val(member.uye_turu);
+            
+            $('#editMemberModal').modal('show');
+        },
+        error: function() {
+            showToast('Üye bilgileri alınamadı', 'error');
+        }
+    });
+}
+
+// Üye güncelleme - inline
+function updateMember() {
+    const id = $('#editMemberId').val();
+    const data = {
+        ad_soyad: $('#editMemberName').val(),
+        sinif: $('#editMemberClass').val(),
+        numara: $('#editMemberNumber').val(),
+        email: $('#editMemberEmail').val(),
+        phone: $('#editMemberPhone').val(),
+        uye_turu: $('#editMemberType').val()
+    };
+    
+    // Eksik bilgiler olsa da kayda izin verilir
+    
+    $.ajax({
+        url: `/api/members/${id}`,
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function() {
+            showToast('Üye güncellendi', 'success');
+            $('#editMemberModal').modal('hide');
+            if (typeof loadMembers === 'function') {
+                loadMembers(currentMemberPage || 1);
+            }
+        },
+        error: function(xhr) {
+            showToast(xhr.responseJSON?.message || 'Güncelleme hatası', 'error');
+        }
+    });
+}
+
+// Export üyeler - inline
+function exportMembers() {
+    const link = document.createElement('a');
+    link.href = '/api/export/members';
+    link.download = `uyeler_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.click();
+    showToast('Excel dosyası indiriliyor...', 'success');
+}
+
+// Import üyeler - inline
+function importMembers() {
+    const fileInput = $('#importMemberFile')[0];
+    
+    if (!fileInput.files.length) {
+        showToast('Lütfen bir dosya seçin', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+            // Loading state with progress
+        const submitBtn = $('#importMemberForm button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="spinner-border spinner-border-sm me-2"></i>Yükleniyor...')
+               .prop('disabled', true);
+        
+        // Progress indicator
+        const progressHtml = `
+            <div id="importProgress" class="mt-3">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <small class="text-muted mt-1 d-block">
+                    <i class="fas fa-clock"></i> İşlem başlatılıyor...
+                </small>
+            </div>
+        `;
+        $(this).find('.modal-body').append(progressHtml);
+        
+        // Simulate progress for large files
+        const fileSize = fileInput.files[0].size;
+        if (fileSize > 100000) { // 100KB'dan büyük dosyalar için
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 95) progress = 95;
+                
+                $('#importProgress .progress-bar').css('width', progress + '%');
+                $('#importProgress small').html(`
+                    <i class="fas fa-upload"></i> İşleniyor... ${Math.round(progress)}%
+                    <br><small>Büyük dosyalar için lütfen bekleyin</small>
+                `);
+            }, 500);
+            
+            // Clear interval on complete
+            $(document).one('import-complete', function() {
+                clearInterval(progressInterval);
+                $('#importProgress .progress-bar').css('width', '100%');
+                $('#importProgress small').html('<i class="fas fa-check"></i> Tamamlandı!');
+            });
+        }
+    
+            $.ajax({
+            url: '/api/import/members',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            timeout: 300000, // 5 dakika timeout (büyük dosyalar için)
+        success: function(response) {
+            console.log('Import response:', response);
+            
+            if (response.success) {
+                // Başarılı import - detaylı mesaj göster
+                showImportResults(response, 'success');
+                $('#importMemberModal').modal('hide');
+                if (typeof loadMembers === 'function') {
+                    loadMembers(1);
+                }
+            } else {
+                // Başarısız import - detaylı hata göster
+                showImportResults(response, 'error');
+            }
+        },
+        error: function(xhr) {
+            console.error('Import error:', xhr);
+            const message = xhr.responseJSON?.message || 'Excel yükleme hatası';
+            showToast(message, 'error');
+        },
+        complete: function() {
+            $(document).trigger('import-complete');
+            setTimeout(() => {
+                submitBtn.html(originalText).prop('disabled', false);
+                $('#importProgress').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 1000);
+        }
+    });
+}
+
+$('#bulkPdfBtn').on('click', function() {
+    const selected = $('.member-checkbox:checked').map(function(){return this.value;}).get();
+    if(selected.length === 0) {
+        showToast('Lütfen en az bir üye seçin', 'warning');
+        return;
+    }
+    // PDF indirmek için POST ile veri gönder
+    const form = $('<form>', {method: 'POST', action: '/api/members/pdf-bulk', target: '_blank'});
+    $('<input>', {type: 'hidden', name: 'ids', value: JSON.stringify(selected)}).appendTo(form);
+    form.appendTo('body').submit().remove();
+});
+
+// Excel Import Form Handler - Eksik olan kısmı ekliyoruz
+$('#importMemberForm').on('submit', function(e) {
+    e.preventDefault();
+    importMembers();
+});
+
+// Import sonuçlarını detaylı göster
+function showImportResults(response, type) {
+    let modalHtml = `
+        <div class="modal fade" id="importResultsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-${type === 'success' ? 'success' : 'danger'} text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                            Excel Import Sonuçları
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-${type === 'success' ? 'success' : 'danger'}">
+                            ${response.message.replace(/\\n/g, '<br>')}
+                        </div>`;
+    
+    if (response.details) {
+        // İstatistikler
+        if (response.details.stats) {
+            const stats = response.details.stats;
+            modalHtml += `
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header"><strong>📊 İstatistikler</strong></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>✅ Eklenen:</span>
+                                        <badge class="badge bg-success">${stats.added_count}</badge>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>⏭️ Atlanan:</span>
+                                        <badge class="badge bg-warning">${stats.skipped_count}</badge>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>❌ Hata:</span>
+                                        <badge class="badge bg-danger">${stats.error_count}</badge>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>🔄 Duplicate:</span>
+                                        <badge class="badge bg-info">${stats.duplicate_count}</badge>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header"><strong>🗂️ Sütun Eşleme</strong></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">`;
+            
+            if (response.details.mapped_columns) {
+                Object.entries(response.details.mapped_columns).forEach(([system, excel]) => {
+                    modalHtml += `
+                        <li class="list-group-item small">
+                            <strong>${system}:</strong> ${excel}
+                        </li>`;
+                });
+            }
+            
+            modalHtml += `
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+        
+        // Başarılı kayıtlar
+        if (response.details.successful_records && response.details.successful_records.length > 0) {
+            modalHtml += `
+                <div class="card mb-3">
+                    <div class="card-header"><strong>✅ Başarılı Kayıtlar</strong></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead><tr><th>Satır</th><th>Ad Soyad</th><th>Numara</th><th>Sınıf</th></tr></thead>
+                                <tbody>`;
+            
+            response.details.successful_records.forEach(record => {
+                modalHtml += `
+                    <tr>
+                        <td>${record.row}</td>
+                        <td>${record.name}</td>
+                        <td>${record.number}</td>
+                        <td>${record.class}</td>
+                    </tr>`;
+            });
+            
+            modalHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+        }
+        
+        // Hatalar
+        if (response.details.errors && response.details.errors.length > 0) {
+            modalHtml += `
+                <div class="card mb-3">
+                    <div class="card-header text-danger">
+                        <strong>❌ Hatalar</strong>
+                        ${response.details.total_errors > response.details.errors.length ? 
+                          `<small>(${response.details.errors.length}/${response.details.total_errors} gösteriliyor)</small>` : ''}
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">`;
+            
+            response.details.errors.forEach(error => {
+                modalHtml += `<li class="list-group-item text-danger small">${error}</li>`;
+            });
+            
+            modalHtml += `
+                        </ul>
+                    </div>
+                </div>`;
+        }
+    }
+    
+    modalHtml += `
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    
+    // Eski modal varsa kaldır
+    $('#importResultsModal').remove();
+    
+    // Yeni modal ekle ve göster
+    $('body').append(modalHtml);
+    $('#importResultsModal').modal('show');
+    
+    // Modal kapandığında temizle
+    $('#importResultsModal').on('hidden.bs.modal', function() {
+        $(this).remove();
+    });
+}
+
+// Cezalılar ve gecikmişler tablosunu yükle
+function loadPenalizedMembers() {
+    $.get('/api/members/penalized', function(data) {
+        const tbody = $('#penalizedTableBody');
+        tbody.empty();
+        if (!data.members || data.members.length === 0) {
+            tbody.html('<tr><td colspan="5" class="text-center text-muted">Cezalı üye yok</td></tr>');
+            return;
+        }
+        data.members.forEach(m => {
+            tbody.append(`<tr>
+                <td>${m.ad_soyad}</td>
+                <td>${m.numara}</td>
+                <td>${m.sinif}</td>
+                <td>${m.email}</td>
+                <td>${m.penalty_until ? m.penalty_until.split('T')[0] : ''}</td>
+            </tr>`);
+        });
+    });
+}
+function loadOverdueMembers() {
+    $.get('/api/members/overdue', function(data) {
+        const tbody = $('#overdueTableBody');
+        tbody.empty();
+        if (!data.members || data.members.length === 0) {
+            tbody.html('<tr><td colspan="6" class="text-center text-muted">Gecikmiş üye yok</td></tr>');
+            return;
+        }
+        data.members.forEach(m => {
+            tbody.append(`<tr>
+                <td>${m.ad_soyad}</td>
+                <td>${m.numara}</td>
+                <td>${m.sinif}</td>
+                <td>${m.email}</td>
+                <td>${m.book_title}</td>
+                <td>${m.due_date}</td>
+            </tr>`);
+        });
+    });
+}
+
+// PDF İndir
+function exportMembersPDF() {
+    showToast('PDF oluşturuluyor...', 'info');
+    fetch('/api/members/list-pdf')
+        .then(async (response) => {
+            if (!response.ok) {
+                let message = 'PDF indirilemedi';
+                try { message = (await response.json()).error || message; } catch (_) {}
+                throw new Error(message);
+            }
+            const ct = (response.headers.get('Content-Type') || '').toLowerCase();
+            if (!ct.includes('application/pdf')) {
+                let message = 'PDF oluşturulamadı';
+                try { message = (await response.json()).error || message; } catch (_) {}
+                throw new Error(message);
+            }
+            const blob = await response.blob();
+            const cd = response.headers.get('Content-Disposition') || '';
+            const match = cd.match(/filename="?([^";]+)"?/i);
+            const filename = match ? match[1] : `uyeler_listesi_${new Date().toISOString().slice(0,16).replace(/[-:T]/g,'')}.pdf`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            a.remove();
+            showToast('PDF dosyası indirildi!', 'success');
+        })
+        .catch((err) => {
+            console.error('Members PDF Error:', err);
+            showToast(err.message || 'PDF oluşturulurken hata oluştu', 'error');
+        });
+}
+// Global erişim
+window.exportMembersPDF = exportMembersPDF;
+
+$('#penalized-tab').on('shown.bs.tab', loadPenalizedMembers);
+$('#overdue-tab').on('shown.bs.tab', loadOverdueMembers);
+</script>
+{% endblock %}

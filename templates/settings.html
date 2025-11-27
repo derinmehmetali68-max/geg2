@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Sistem Ayarları{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-sliders"></i> Sistem Ayarları
+            </h2>
+            
+            <!-- Sekmeler -->
+            <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+                        <i class="bi bi-gear"></i> Genel Ayarlar
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="library-tab" data-bs-toggle="tab" data-bs-target="#library" type="button" role="tab">
+                        <i class="bi bi-building"></i> Kütüphane Bilgileri
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rules-tab" data-bs-toggle="tab" data-bs-target="#rules" type="button" role="tab">
+                        <i class="bi bi-book"></i> Ödünç Kuralları
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab">
+                        <i class="bi bi-bell"></i> Bildirimler
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="email-templates-tab" data-bs-toggle="tab" data-bs-target="#email-templates" type="button" role="tab">
+                        <i class="bi bi-envelope"></i> E-posta Şablonları
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="accessibility-tab" data-bs-toggle="tab" data-bs-target="#accessibility" type="button" role="tab">
+                        <i class="bi bi-universal-access"></i> Erişebilirlik
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="settingsTabsContent">
+                <!-- Genel Ayarlar -->
+                <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form id="generalSettingsForm">
+                                <div class="row">
+                                    {% for setting in settings %}
+                                    {% if setting.key in ['library_name', 'library_email', 'library_phone'] %}
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ setting.key }}" class="form-label">
+                                            {{ setting.description }}
+                                        </label>
+                                        <input type="text" class="form-control" id="{{ setting.key }}" 
+                                               name="{{ setting.key }}" value="{{ setting.value }}">
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Kaydet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Kütüphane Bilgileri -->
+                <div class="tab-pane fade" id="library" role="tabpanel" aria-labelledby="library-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form id="librarySettingsForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="library_address" class="form-label">Adres</label>
+                                        <textarea class="form-control" id="library_address" name="library_address" rows="3"></textarea>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="working_hours" class="form-label">Çalışma Saatleri</label>
+                                        <textarea class="form-control" id="working_hours" name="working_hours" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Kaydet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ödünç Kuralları -->
+                <div class="tab-pane fade" id="rules" role="tabpanel" aria-labelledby="rules-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form id="rulesSettingsForm">
+                                <div class="row">
+                                    {% for setting in settings %}
+                                    {% if setting.key in ['max_borrow_days', 'max_renew_count', 'max_books_per_member', 'fine_per_day', 'reservation_expiry_days'] %}
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ setting.key }}" class="form-label">
+                                            {{ setting.description }}
+                                        </label>
+                                        <input type="number" class="form-control" id="{{ setting.key }}" 
+                                               name="{{ setting.key }}" value="{{ setting.value }}"
+                                               {% if 'fine' in setting.key %}step="0.1"{% endif %}>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Kaydet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bildirimler -->
+                <div class="tab-pane fade" id="notifications" role="tabpanel" aria-labelledby="notifications-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form id="notificationSettingsForm">
+                                <div class="row">
+                                    {% for setting in settings %}
+                                    {% if setting.key in ['email_notifications', 'sms_notifications'] %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="{{ setting.key }}" 
+                                                   name="{{ setting.key }}" {% if setting.value == 'true' %}checked{% endif %}>
+                                            <label class="form-check-label" for="{{ setting.key }}">
+                                                {{ setting.description }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                                
+                                <hr>
+                                
+                                <h5>Bildirim Zamanlaması</h5>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="reminder_days_before" class="form-label">
+                                            İade hatırlatması (gün önce)
+                                        </label>
+                                        <input type="number" class="form-control" id="reminder_days_before" 
+                                               name="reminder_days_before" value="3">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="overdue_check_time" class="form-label">
+                                            Gecikme kontrolü saati
+                                        </label>
+                                        <input type="time" class="form-control" id="overdue_check_time" 
+                                               name="overdue_check_time" value="09:00">
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Kaydet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- E-posta Şablonları -->
+                <div class="tab-pane fade" id="email-templates" role="tabpanel" aria-labelledby="email-templates-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="accordion" id="emailTemplatesAccordion">
+                                {% for template in email_templates %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" 
+                                                type="button" data-bs-toggle="collapse" 
+                                                data-bs-target="#collapse{{ loop.index }}" 
+                                                aria-expanded="{{ 'true' if loop.first else 'false' }}" 
+                                                aria-controls="collapse{{ loop.index }}">
+                                            {{ template.subject }}
+                                            {% if template.is_active %}
+                                            <span class="badge bg-success ms-2">Aktif</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary ms-2">Pasif</span>
+                                            {% endif %}
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ loop.index }}" 
+                                         class="accordion-collapse collapse {% if loop.first %}show{% endif %}" 
+                                         aria-labelledby="heading{{ loop.index }}" 
+                                         data-bs-parent="#emailTemplatesAccordion">
+                                        <div class="accordion-body">
+                                            <form class="email-template-form" data-template-id="{{ template.id }}">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Şablon Adı</label>
+                                                    <input type="text" class="form-control" value="{{ template.name }}" readonly>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Konu</label>
+                                                    <input type="text" class="form-control" name="subject" value="{{ template.subject }}">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">İçerik</label>
+                                                    <textarea class="form-control" name="body" rows="8">{{ template.body }}</textarea>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Kullanılabilir Değişkenler</label>
+                                                    <div class="alert alert-info">
+                                                        <small>{{ template.variables }}</small>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="is_active" 
+                                                               {% if template.is_active %}checked{% endif %}>
+                                                        <label class="form-check-label">
+                                                            Aktif
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="bi bi-save"></i> Güncelle
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Erişebilirlik -->
+                <div class="tab-pane fade" id="accessibility" role="tabpanel" aria-labelledby="accessibility-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">Erişebilirlik Ayarları</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="disableAnimations">
+                                <label class="form-check-label" for="disableAnimations">
+                                    Animasyonları Kapat <span class="text-muted">(Sayfa geçişleri ve efektler devre dışı kalır)</span>
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="highContrastMode">
+                                <label class="form-check-label" for="highContrastMode">
+                                    Yüksek Kontrast Modu <span class="text-muted">(Renkler daha belirgin olur)</span>
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="extraHighContrastMode">
+                                <label class="form-check-label" for="extraHighContrastMode">
+                                    Ekstra Yüksek Kontrast <span class="text-muted">(Siyah-beyaz, maksimum kontrast)</span>
+                                </label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="fontSizeRange" class="form-label">Yazı Büyüklüğü: <span id="fontSizeValue">100%</span></label>
+                                <input type="range" class="form-range" min="100" max="200" step="5" id="fontSizeRange">
+                                <div class="form-text">Yazı boyutunu yüzde olarak ayarlayın (%100-%200).</div>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="readableFont">
+                                <label class="form-check-label" for="readableFont">
+                                    Okunabilir Font <span class="text-muted">(Daha sade, kolay okunan yazı tipi)</span>
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="underlineLinks">
+                                <label class="form-check-label" for="underlineLinks">
+                                    Altı Çizili Linkler <span class="text-muted">(Tüm bağlantılar altı çizili olur)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Genel ayarlar formu
+document.getElementById('generalSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    await saveSettings(this);
+});
+
+// Kütüphane ayarları formu
+document.getElementById('librarySettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    await saveSettings(this);
+});
+
+// Kurallar formu
+document.getElementById('rulesSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    await saveSettings(this);
+});
+
+// Bildirim ayarları formu
+document.getElementById('notificationSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Checkbox değerlerini string'e çevir
+    const formData = new FormData(this);
+    const data = {};
+    
+    for (let [key, value] of formData.entries()) {
+        data[key] = value;
+    }
+    
+    // Checkbox'lar için
+    const checkboxes = this.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        data[cb.name] = cb.checked ? 'true' : 'false';
+    });
+    
+    await saveSettings(null, data);
+});
+
+// E-posta şablonları formları
+document.querySelectorAll('.email-template-form').forEach(form => {
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const templateId = this.dataset.templateId;
+        const formData = new FormData(this);
+        const data = {
+            subject: formData.get('subject'),
+            body: formData.get('body'),
+            is_active: this.querySelector('input[name="is_active"]').checked
+        };
+        
+        try {
+            const response = await fetch(`/api/email-templates/${templateId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('E-posta şablonu güncellendi');
+            } else {
+                alert(result.message || 'Bir hata oluştu');
+            }
+        } catch (error) {
+            alert('Bir hata oluştu');
+        }
+    });
+});
+
+// Ayarları kaydet
+async function saveSettings(form, customData = null) {
+    let data = customData;
+    
+    if (!data && form) {
+        const formData = new FormData(form);
+        data = {};
+        for (let [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+    }
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+        } else {
+            alert('Bir hata oluştu');
+        }
+    } catch (error) {
+        alert('Bir hata oluştu');
+    }
+}
+
+// Erişebilirlik ayarları uygulama
+function applyAccessibilitySettings() {
+    // Animasyonlar
+    if(localStorage.getItem('disableAnimations') === 'true') {
+        document.body.classList.add('no-animations');
+    } else {
+        document.body.classList.remove('no-animations');
+    }
+    // Yüksek kontrast
+    if(localStorage.getItem('highContrastMode') === 'true') {
+        document.body.classList.add('high-contrast');
+    } else {
+        document.body.classList.remove('high-contrast');
+    }
+    // Ekstra yüksek kontrast
+    if(localStorage.getItem('extraHighContrastMode') === 'true') {
+        document.body.classList.add('extra-high-contrast');
+    } else {
+        document.body.classList.remove('extra-high-contrast');
+    }
+    // Font büyüklüğü
+    var fontSize = localStorage.getItem('fontSizePercent') || '100';
+    document.body.style.fontSize = fontSize + '%';
+    document.getElementById('fontSizeValue').innerText = fontSize + '%';
+    // Okunabilir font
+    if(localStorage.getItem('readableFont') === 'true') {
+        document.body.classList.add('readable-font');
+    } else {
+        document.body.classList.remove('readable-font');
+    }
+    // Altı çizili linkler
+    if(localStorage.getItem('underlineLinks') === 'true') {
+        document.body.classList.add('underline-links');
+    } else {
+        document.body.classList.remove('underline-links');
+    }
+    // Renk körlüğü simülasyonu
+    document.body.classList.remove('cb-deuteranopia','cb-protanopia','cb-tritanopia');
+    var cb = localStorage.getItem('colorBlindMode') || 'none';
+    if(cb && cb !== 'none') {
+        document.body.classList.add('cb-' + cb);
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('disableAnimations').checked = localStorage.getItem('disableAnimations') === 'true';
+    document.getElementById('highContrastMode').checked = localStorage.getItem('highContrastMode') === 'true';
+    document.getElementById('extraHighContrastMode').checked = localStorage.getItem('extraHighContrastMode') === 'true';
+    document.getElementById('readableFont').checked = localStorage.getItem('readableFont') === 'true';
+    document.getElementById('underlineLinks').checked = localStorage.getItem('underlineLinks') === 'true';
+    document.getElementById('colorBlindMode').value = localStorage.getItem('colorBlindMode') || 'none';
+    document.getElementById('fontSizeRange').value = localStorage.getItem('fontSizePercent') || '100';
+    document.getElementById('fontSizeValue').innerText = (localStorage.getItem('fontSizePercent') || '100') + '%';
+    document.getElementById('disableAnimations').onchange = function() {
+        localStorage.setItem('disableAnimations', this.checked);
+        applyAccessibilitySettings();
+    };
+    document.getElementById('highContrastMode').onchange = function() {
+        localStorage.setItem('highContrastMode', this.checked);
+        applyAccessibilitySettings();
+    };
+    document.getElementById('extraHighContrastMode').onchange = function() {
+        localStorage.setItem('extraHighContrastMode', this.checked);
+        applyAccessibilitySettings();
+    };
+    document.getElementById('readableFont').onchange = function() {
+        localStorage.setItem('readableFont', this.checked);
+        applyAccessibilitySettings();
+    };
+    document.getElementById('underlineLinks').onchange = function() {
+        localStorage.setItem('underlineLinks', this.checked);
+        applyAccessibilitySettings();
+    };
+    document.getElementById('colorBlindMode').onchange = function() {
+        localStorage.setItem('colorBlindMode', this.value);
+        applyAccessibilitySettings();
+    };
+    document.getElementById('fontSizeRange').oninput = function() {
+        localStorage.setItem('fontSizePercent', this.value);
+        applyAccessibilitySettings();
+    };
+    applyAccessibilitySettings();
+});
+</script>
+{% endblock %}

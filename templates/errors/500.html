@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Sunucu Hatası - CAL Kütüphane{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-page">
+                <div class="error-code mb-4">
+                    <h1 class="display-1 text-danger">500</h1>
+                </div>
+                
+                <div class="error-message mb-4">
+                    <h2>Sunucu Hatası</h2>
+                    <p class="text-muted">
+                        Bir sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.
+                    </p>
+                </div>
+                
+                <div class="error-actions">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-house"></i> Ana Sayfa
+                    </a>
+                    <button onclick="location.reload()" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-arrow-clockwise"></i> Yenile
+                    </button>
+                    <button onclick="history.back()" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Geri Dön
+                    </button>
+                </div>
+                
+                <div class="mt-4">
+                    <small class="text-muted">
+                        Hata kodu: 500 - İç Sunucu Hatası<br>
+                        Sorun devam ederse sistem yöneticisi ile iletişime geçin.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    padding: 2rem;
+}
+
+.error-code h1 {
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.error-message h2 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.error-actions .btn {
+    margin: 0.25rem;
+}
+</style>
+{% endblock %} 

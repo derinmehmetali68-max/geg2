@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Bildirimler - Kütüphane Yönetim Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Başlık ve Butonlar -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-bell"></i> Bildirimler</h2>
+                <div class="btn-group">
+                    <button class="btn btn-primary btn-sm" onclick="markAllAsRead()">
+                        <i class="bi bi-check-all"></i> Tümünü Okundu İşaretle
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="clearAllNotifications()">
+                        <i class="bi bi-trash"></i> Tümünü Sil
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Filtreler -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="notifFilter" id="filterAllNotif" value="all" checked>
+                        <label class="btn btn-outline-primary" for="filterAllNotif">
+                            <i class="bi bi-list"></i> Tümü
+                        </label>
+                        
+                        <input type="radio" class="btn-check" name="notifFilter" id="filterUnread" value="unread">
+                        <label class="btn btn-outline-info" for="filterUnread">
+                            <i class="bi bi-envelope"></i> Okunmamış
+                        </label>
+                        
+                        <input type="radio" class="btn-check" name="notifFilter" id="filterOverdue" value="overdue">
+                        <label class="btn btn-outline-danger" for="filterOverdue">
+                            <i class="bi bi-exclamation-triangle"></i> Gecikme
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bildirimler -->
+            <div id="notificationsContainer">
+                <!-- Yükleniyor spinnerı kaldırıldı -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sayfa yüklendiğinde - OPTİMİZE EDİLMİŞ
+$(document).ready(function() {
+    console.log('🔔 Bildirimler sayfası yükleniyor...');
+    
+    // Bildirimleri yükle
+    setTimeout(function() {
+        if (typeof loadNotifications === 'function') {
+            loadNotifications();
+        }
+    }, 100);
+    
+    // Filter event'i
+    $('input[name="notifFilter"]').on('change', function() {
+        const filter = $(this).val();
+        loadNotifications(filter);
+    });
+    
+    console.log('✅ Bildirimler sayfası hazır');
+});
+
+// Bildirimleri yükle - Basitleştirilmiş
+function loadNotifications(filter = 'all') {
+    const url = filter === 'unread' ? '/api/notifications?unread_only=true' : '/api/notifications';
+    
+    $.ajax({
+        url: url,
+        timeout: 3000,
+        success: function(data) {
+            displayNotifications(data.notifications, filter);
+        },
+        error: function() {
+            $('#notificationsContainer').html(`
+                <div class="alert alert-danger text-center">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Bildirimler yüklenirken hata oluştu
+                </div>
+            `);
+        }
+    });
+}
+
+// Bildirimleri göster - Optimize edilmiş
+function displayNotifications(notifications, filter) {
+    const container = $('#notificationsContainer');
+    container.empty();
+    
+    if (!notifications || notifications.length === 0) {
+        container.append(`
+            <div class="alert alert-info text-center">
+                <i class="bi bi-bell-slash"></i>
+                ${filter === 'unread' ? 'Okunmamış bildirim yok' : 'Bildirim bulunamadı'}
+            </div>
+        `);
+        return;
+    }
+    
+    notifications.forEach(notification => {
+        const isUnread = notification.is_read === 0;
+        const typeIcon = getNotificationIcon(notification.type);
+        const typeClass = getNotificationClass(notification.type);
+        
+        // Filter kontrol
+        if (filter === 'overdue' && notification.type !== 'overdue') return;
+        
+        container.append(`
+            <div class="card mb-3 ${isUnread ? 'border-primary' : ''}" data-id="${notification.id}">
+                <div class="card-body">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <i class="bi bi-${typeIcon} ${typeClass} h4"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="mb-1 ${isUnread ? 'fw-bold' : ''}">
+                                        ${getNotificationTitle(notification.type)}
+                                        ${isUnread ? '<span class="badge bg-primary ms-2">Yeni</span>' : ''}
+                                    </h6>
+                                    <p class="mb-1">${notification.message}</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> ${formatDate(notification.created_date)}
+                                    </small>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    ${isUnread ? `<button class="btn btn-outline-primary" onclick="markNotificationAsRead(${notification.id})" title="Okundu işaretle">
+                                        <i class="bi bi-check"></i>
+                                    </button>` : ''}
+                                    <button class="btn btn-outline-danger" onclick="deleteNotification(${notification.id})" title="Sil">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+    });
+}
+
+// Yardımcı fonksiyonlar
+function getNotificationIcon(type) {
+    const icons = {
+        'return_reminder': 'clock',
+        'overdue': 'exclamation-triangle',
+        'reservation': 'bookmark',
+        'fine': 'currency-dollar',
+        'system': 'gear'
+    };
+    return icons[type] || 'bell';
+}
+
+function getNotificationClass(type) {
+    const classes = {
+        'return_reminder': 'text-warning',
+        'overdue': 'text-danger',
+        'reservation': 'text-info',
+        'fine': 'text-danger',
+        'system': 'text-secondary'
+    };
+    return classes[type] || 'text-primary';
+}
+
+function getNotificationTitle(type) {
+    const titles = {
+        'return_reminder': 'İade Hatırlatması',
+        'overdue': 'Gecikme Uyarısı',
+        'reservation': 'Rezervasyon',
+        'fine': 'Ceza Bildirimi',
+        'system': 'Sistem Bildirimi'
+    };
+    return titles[type] || 'Bildirim';
+}
+
+// Tümünü okundu işaretle
+function markAllAsRead() {
+    if (confirm('Tüm bildirimleri okundu olarak işaretlemek istediğinizden emin misiniz?')) {
+        $.ajax({
+            url: '/api/notifications/mark-all-read',
+            method: 'POST',
+            success: function() {
+                showToast('Tüm bildirimler okundu olarak işaretlendi', 'success');
+                loadNotifications($('input[name="notifFilter"]:checked').val());
+                if (typeof checkNotifications === 'function') {
+                    checkNotifications();
+                }
+            },
+            error: function() {
+                showToast('İşlem başarısız oldu', 'error');
+            }
+        });
+    }
+}
+
+// Tümünü sil
+function clearAllNotifications() {
+    if (confirm('Tüm bildirimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+        $.ajax({
+            url: '/api/notifications/clear-all',
+            method: 'DELETE',
+            success: function() {
+                showToast('Tüm bildirimler silindi', 'success');
+                loadNotifications($('input[name="notifFilter"]:checked').val());
+                if (typeof checkNotifications === 'function') {
+                    checkNotifications();
+                }
+            },
+            error: function() {
+                showToast('İşlem başarısız oldu', 'error');
+            }
+        });
+    }
+}
+
+// Tek bildirimi okundu işaretle
+function markNotificationAsRead(id) {
+    $.ajax({
+        url: `/api/notifications/${id}/read`,
+        method: 'POST',
+        success: function() {
+            // Görsel güncellemeler
+            const card = $(`.card[data-id="${id}"]`);
+            card.removeClass('border-primary')
+                .find('.fw-bold').removeClass('fw-bold').end()
+                .find('.badge').remove().end()
+                .find('.btn-outline-primary').remove();
+            
+            showToast('Bildirim okundu olarak işaretlendi', 'success');
+            
+            // Badge güncelle
+            if (typeof checkNotifications === 'function') {
+                checkNotifications();
+            }
+        },
+        error: function() {
+            showToast('Bildirim güncellenemedi', 'error');
+        }
+    });
+}
+
+// Tek bildirimi sil
+function deleteNotification(id) {
+    if (confirm('Bu bildirimi silmek istediğinizden emin misiniz?')) {
+        $.ajax({
+            url: `/api/notifications/${id}`,
+            method: 'DELETE',
+            success: function() {
+                $(`.card[data-id="${id}"]`).fadeOut(300, function() {
+                    $(this).remove();
+                });
+                showToast('Bildirim silindi', 'success');
+                
+                // Badge güncelle
+                if (typeof checkNotifications === 'function') {
+                    checkNotifications();
+                }
+            },
+            error: function() {
+                showToast('Bildirim silinemedi', 'error');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

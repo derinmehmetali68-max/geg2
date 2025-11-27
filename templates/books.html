@@ -1,0 +1,1807 @@
+{% extends "base.html" %}
+
+{% block title %}Kitaplar - Kütüphane Yönetim Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Başlık ve Butonlar -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-book"></i> Kitap Yönetimi</h2>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="showAddBookModal()">
+                        <i class="bi bi-plus-circle"></i> Yeni Kitap
+                    </button>
+                    <button class="btn btn-primary" onclick="showFetchBooksModal()">
+                        <i class="bi bi-magic"></i> ISBN ile Hızlı Ekleme
+                    </button>
+                    <button class="btn btn-info" onclick="showImportModal()">
+                        <i class="bi bi-upload"></i> Excel Yükle
+                    </button>
+                    <button class="btn btn-warning" onclick="exportBooks()">
+                        <i class="bi bi-download"></i> Excel İndir
+                    </button>
+                    <button class="btn btn-danger" onclick="exportBooksPDF()">
+                        <i class="bi bi-file-earmark-pdf"></i> PDF İndir
+                    </button>
+                    <button class="btn btn-secondary" onclick="downloadMissingCovers()" title="Kapak resmi eksik kitaplar için otomatik indir">
+                        <i class="bi bi-image"></i> Kapak Tamamla
+                    </button>
+                    <button class="btn btn-dark" onclick="completeAllBooksInfo()" title="Tüm kitapların bilgilerini API'den doğrula ve güncelle">
+                        <i class="bi bi-database-fill-check"></i> Tüm Kitap Bilgileri Tamamla
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Arama ve Filtreler -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="bookSearch" 
+                                       placeholder="Kitap adı, yazar veya ISBN ara...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="categoryFilter">
+                                <option value="">Tüm Kategoriler</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Birden fazla kategori ile filtreleme için CTRL ile seçin (yakında).</small>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="statusFilter">
+                                <option value="">Tüm Durumlar</option>
+                                <option value="available">Mevcut</option>
+                                <option value="borrowed">Ödünç Verilmiş</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Kitap Listesi -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-end mb-3 gap-2">
+                        <a href="/api/books/qr-bulk" class="btn btn-outline-secondary" target="_blank">
+                            <i class="bi bi-qr-code"></i> Tüm Kitaplar QR
+                        </a>
+                        <button id="bulkQrBtn" class="btn btn-secondary" type="button">
+                            <i class="bi bi-qr-code"></i> Seçili Olanlar İçin QR Bas
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="selectAllBooks"></th>
+                                    <th>ISBN</th>
+                                    <th>Kapak</th>
+                                    <th>Kitap Adı</th>
+                                    <th>Yazar</th>
+                                    <th>Yayınevi</th>
+                                    <th>Kategori</th>
+                                    <th>Raf</th>
+                                    <th>Dolap</th>
+                                    <th>Mevcut</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="booksTableBody">
+                                <tr>
+                                    <td colspan="11" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Yükleniyor...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Sayfalama -->
+                    <div id="booksPagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Yeni Kitap Ekleme Modal -->
+<div class="modal fade" id="addBookModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yeni Kitap Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addBookForm">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="addBookISBN" class="form-label">ISBN *</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="addBookISBN" placeholder="9786051850078" required>
+                                <button type="button" class="btn btn-outline-primary" onclick="fetchBookFromISBN()">
+                                    <i class="bi bi-search"></i> Başlık ve Bilgileri Getir
+                                </button>
+                            </div>
+                            <small class="text-muted">ISBN numarasını girdikten sonra "Başlık ve Bilgileri Getir" butonuna tıklayarak kitap bilgilerini otomatik doldurabilirsiniz.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="addBookTitle" class="form-label">Kitap Adı</label>
+                            <input type="text" class="form-control" id="addBookTitle">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="addBookAuthors" class="form-label">Yazar(lar)</label>
+                            <input type="text" class="form-control" id="addBookAuthors">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="addBookPublishers" class="form-label">Yayınevi</label>
+                            <input type="text" class="form-control" id="addBookPublishers">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="addBookPublishDate" class="form-label">Yayın Yılı</label>
+                            <input type="text" class="form-control" id="addBookPublishDate" placeholder="2023">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="addBookPages" class="form-label">Sayfa Sayısı</label>
+                            <input type="number" class="form-control" id="addBookPages" min="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="addBookLanguages" class="form-label">Dil</label>
+                            <input type="text" class="form-control" id="addBookLanguages" value="Türkçe">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="addBookQuantity" class="form-label">Adet</label>
+                            <input type="number" class="form-control" id="addBookQuantity" value="1" min="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="addBookShelf" class="form-label">Raf</label>
+                            <input type="text" class="form-control" id="addBookShelf" placeholder="A-1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="addBookCategories" class="form-label">Kategoriler (TR lise listesi)</label>
+                            <select class="form-select" id="addBookCategories" multiple size="6">
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Birden fazla kategori seçebilirsiniz.</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="addBookCupboard" class="form-label">Dolap</label>
+                            <input type="text" class="form-control" id="addBookCupboard" placeholder="1">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Kapak Resmi (Manuel Yükleme)</label>
+                            <input type="file" class="form-control" id="addBookCover" accept="image/*">
+                            <small class="text-muted">API kapak getiremezse buradan yükleyebilirsiniz.</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Kitap Düzenleme Modal -->
+<div class="modal fade" id="editBookModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kitap Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editBookForm">
+                <input type="hidden" id="editBookISBN">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">ISBN</label>
+                            <input type="text" class="form-control" id="editBookISBNDisplay" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editBookTitle" class="form-label">Kitap Adı</label>
+                            <input type="text" class="form-control" id="editBookTitle">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editBookAuthors" class="form-label">Yazar(lar)</label>
+                            <input type="text" class="form-control" id="editBookAuthors">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editBookPublishers" class="form-label">Yayınevi</label>
+                            <input type="text" class="form-control" id="editBookPublishers">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editBookPublishDate" class="form-label">Yayın Yılı</label>
+                            <input type="text" class="form-control" id="editBookPublishDate">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editBookPages" class="form-label">Sayfa Sayısı</label>
+                            <input type="number" class="form-control" id="editBookPages" min="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editBookLanguages" class="form-label">Dil</label>
+                            <input type="text" class="form-control" id="editBookLanguages">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editBookQuantity" class="form-label">Adet</label>
+                            <input type="number" class="form-control" id="editBookQuantity" min="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editBookShelf" class="form-label">Raf</label>
+                            <input type="text" class="form-control" id="editBookShelf">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editBookCategories" class="form-label">Kategoriler</label>
+                            <select class="form-select" id="editBookCategories" multiple size="10" style="height: 240px; overflow-y: auto;">
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="moveCategoryOption('editBookCategories', -1)">▲ Yukarı</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="moveCategoryOption('editBookCategories', 1)">▼ Aşağı</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAllCategories('editBookCategories')">Tümünü Seç</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAllCategories('editBookCategories')">Temizle</button>
+                            </div>
+                            <small class="text-muted">Ok tuşları ile sıralayabilir, birden fazla kategori seçebilirsiniz.</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editBookCupboard" class="form-label">Dolap</label>
+                            <input type="text" class="form-control" id="editBookCupboard">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Kapak Resmi (Manuel Yükleme)</label>
+                            <input type="file" class="form-control" id="editBookCover" accept="image/*">
+                            <small class="text-muted">Dosya seçerseniz kayıt sonrası kapak yüklenecektir.</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Güncelle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ISBN ile Kitap Getirme Modal -->
+<div class="modal fade" id="fetchBooksModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ISBN ile Kitap Bilgisi Getir</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="fetchISBNs" class="form-label">ISBN Numaraları (her satıra bir tane)</label>
+                            <textarea class="form-control" id="fetchISBNs" rows="5" 
+                                      placeholder="9789750719387&#10;9786053753742&#10;9789756525265"></textarea>
+                        </div>
+                        <div class="d-flex gap-2 mb-3">
+                            <button type="button" class="btn btn-primary" onclick="fetchBooks()">
+                                <i class="bi bi-search"></i> Bilgileri Getir
+                            </button>
+                            <button type="button" class="btn btn-success" id="fetchAndSaveBtn" onclick="fetchAndSaveAll()" title="ISBN'leri getir ve otomatik kaydet">
+                                <i class="bi bi-magic"></i> Getir ve Kaydet
+                            </button>
+                            <button type="button" class="btn btn-info" onclick="showFetchFileOptions()" title="Dosyadan ISBN'leri yükle">
+                                <i class="bi bi-upload"></i> Dosyadan Yükle
+                            </button>
+                        </div>
+                        
+                        <!-- Dosya yükleme alanı -->
+                        <div id="fetchFileUploadArea" style="display: none;" class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h6><i class="bi bi-file-text"></i> Dosyadan ISBN Yükle</h6>
+                                <input type="file" class="form-control mb-2" id="fetchFileInput" accept=".txt,.csv,.xlsx,.xls">
+                                <small class="text-muted">TXT, CSV veya Excel dosyasından ISBN'leri otomatik yükler</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <!-- İşlem durum kartı -->
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="bi bi-info-circle"></i> İşlem Durumu</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="fetchStatus">
+                                    <p class="text-muted small">ISBN'leri girin ve işleme başlayın</p>
+                                </div>
+                                <div class="progress mb-2" id="fetchProgress" style="display: none;">
+                                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="fetchedBooksTable" style="display:none;">
+                    <h6>Bulunan Kitaplar:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>ISBN</th>
+                                    <th>Başlık</th>
+                                    <th>Yazar</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fetchedBooksBody"></tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-success mt-2" onclick="saveAllFetchedBooks()">
+                        <i class="bi bi-save"></i> Tümünü Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Excel İçe Aktarma Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Excel'den Kitap Yükle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="importForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>Excel Formatı:</strong><br>
+                                ISBN | Başlık | Yazar | Yayın Yılı | Sayfa Sayısı | Yayınevi | Diller | Adet | Raf | Dolap | Kategori
+                            </div>
+                            <div class="mb-3">
+                                <label for="importFile" class="form-label">Excel Dosyası Seçin</label>
+                                <input type="file" class="form-control" id="importFile" accept=".xlsx,.xls" required>
+                            </div>
+                            
+                            <!-- Yeni ISBN Tamamlama Özelliği -->
+                            <div class="card bg-light mt-3" id="isbnAutoCompleteCard" style="display: none;">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0"><i class="bi bi-magic"></i> ISBN'den Otomatik Tamamlama</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">
+                                        Dosyanızda sadece ISBN sütunu varsa, diğer bilgileri otomatik olarak tamamlayabiliriz.
+                                    </p>
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-success" id="autoCompleteBtn">
+                                            <i class="bi bi-cloud-download"></i> ISBN'lerden Bilgi Tamamla
+                                        </button>
+                                        <div class="progress mt-2" id="autoCompleteProgress" style="display: none;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted" id="autoCompleteStatus"></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <!-- Önizleme Alanı -->
+                            <div class="card" id="previewCard" style="display: none;">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0"><i class="bi bi-eye"></i> Excel Önizleme</h6>
+                                </div>
+                                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                    <div id="previewTable"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Yükle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Toast mesaj fonksiyonu - Basit versiyon
+function showToast(message, type = 'info') {
+    // Bootstrap 5 toast kullan
+    const toastContainer = document.getElementById('toast-container') || (() => {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    })();
+    
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' :
+                   type === 'error' ? 'bg-danger' :
+                   type === 'warning' ? 'bg-warning' : 'bg-info';
+    
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+    toast.show();
+    
+    // Otomatik temizle
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+// Global showToast
+window.showToast = showToast;
+
+// Sayfa yüklendiğinde çalışacak kod - OPTİMİZE EDİLMİŞ
+$(document).ready(function() {
+    console.log('📚 Kitap sayfası yükleniyor...');
+    
+    // Kitapları yükle - async olarak
+    setTimeout(function() {
+        if (typeof loadBooks === 'function') {
+            loadBooks(1);
+        }
+    }, 100);
+    
+    // Event listener'ları ekle - basit
+    $('#categoryFilter, #statusFilter').on('change', function() {
+        if (typeof loadBooks === 'function') {
+            loadBooks(1);
+        }
+    });
+    
+    console.log('✅ Kitap sayfası hazır');
+});
+
+// Modal fonksiyonları - Basit versiyon
+function showAddBookModal() {
+    $('#addBookModal').modal('show');
+}
+
+function showFetchBooksModal() {
+    $('#fetchISBNs').val('');
+    $('#fetchedBooksTable').hide();
+    $('#fetchFileUploadArea').hide();
+    $('#fetchFileInput').val('');
+    $('#fetchProgress').hide();
+    $('#fetchStatus').html('<p class="text-muted small">ISBN\'leri girin ve işleme başlayın</p>');
+    $('#fetchBooksModal').modal('show');
+}
+
+function showImportModal() {
+    $('#importFile').val('');
+    $('#previewCard').hide();
+    $('#isbnAutoCompleteCard').hide();
+    $('#importModal').modal('show');
+}
+
+// ISBN ile kitap bilgilerini getir (Yeni Kitap Formu için)
+function fetchBookFromISBN() {
+    const isbn = $('#addBookISBN').val().trim();
+    
+    if (!isbn) {
+        showToast('Lütfen ISBN numarası girin', 'warning');
+        return;
+    }
+    
+    // Mevcut buton referansını al
+    const btn = event?.target || $('button[onclick="fetchBookFromISBN()"]')[0];
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm"></i> Getiriliyor...';
+    }
+    
+    $.ajax({
+        url: '/api/books/fetch-from-isbn',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ isbn: isbn }),
+        success: function(response) {
+            if (response.success && response.book) {
+                const book = response.book;
+                
+                // Form alanlarını doldur
+                $('#addBookTitle').val(book.title || '');
+                $('#addBookAuthors').val(book.authors || '');
+                $('#addBookPublishers').val(book.publishers || '');
+                $('#addBookPublishDate').val(book.publish_date || '');
+                $('#addBookPages').val(book.number_of_pages || '');
+                $('#addBookLanguages').val(book.languages || 'Türkçe');
+                
+                showToast('Kitap bilgileri başarıyla getirildi!', 'success');
+            } else {
+                showToast(response.message || 'Kitap bilgileri bulunamadı', 'warning');
+            }
+        },
+        error: function(xhr) {
+            const message = xhr.responseJSON?.message || 'Bilgiler getirilemedi';
+            const isExisting = xhr.responseJSON?.existing;
+            
+            if (isExisting) {
+                showToast('Bu ISBN numarasına sahip kitap zaten mevcut', 'warning');
+            } else {
+                showToast(message, 'error');
+            }
+        },
+        complete: function() {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    });
+}
+
+// Global erişim
+window.fetchBookFromISBN = fetchBookFromISBN;
+
+// Fetch books function - inline
+function fetchBooks() {
+    const isbns = $('#fetchISBNs').val().split('\n').map(isbn => isbn.trim()).filter(isbn => isbn);
+    
+    if (isbns.length === 0) {
+        showToast('Lütfen en az bir ISBN girin', 'warning');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/books/fetch',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ isbns: isbns }),
+        success: function(response) {
+            displayFetchedBooks(response.books);
+            $('#fetchedBooksTable').show();
+        },
+        error: function() {
+            showToast('Kitap bilgileri alınırken hata oluştu', 'error');
+        }
+    });
+}
+
+// Display fetched books - inline
+function displayFetchedBooks(books) {
+    const tbody = $('#fetchedBooksBody');
+    tbody.empty();
+    window.fetchedBooks = books; // Global'e kaydet
+    
+    books.forEach((book, index) => {
+        const actionButton = book.error ? 
+            '<span class="text-danger">Bilgi bulunamadı</span>' :
+            `<button class="btn btn-sm btn-success" onclick="saveFetchedBook(${index})">Kaydet</button>`;
+            
+        tbody.append(`
+            <tr>
+                <td><code>${book.isbn}</code></td>
+                <td>${book.title}</td>
+                <td>${book.authors}</td>
+                <td>${actionButton}</td>
+            </tr>
+        `);
+    });
+}
+
+// Save fetched book - inline
+function saveFetchedBook(index) {
+    const book = window.fetchedBooks[index];
+    
+    $.ajax({
+        url: '/api/books/add',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(book),
+        success: function() {
+            showToast(`"${book.title}" kaydedildi`, 'success');
+            window.fetchedBooks.splice(index, 1);
+            displayFetchedBooks(window.fetchedBooks);
+            if (typeof loadBooks === 'function') {
+                loadBooks(currentBookPage);
+            }
+        },
+        error: function(xhr) {
+            showToast(xhr.responseJSON?.message || 'Kaydetme hatası', 'error');
+        }
+    });
+}
+
+// Save all fetched books - inline
+function saveAllFetchedBooks() {
+    const validBooks = window.fetchedBooks.filter(book => !book.error);
+    
+    if (validBooks.length === 0) {
+        showToast('Kaydedilecek geçerli kitap yok', 'warning');
+        return;
+    }
+    
+    if (confirm(`${validBooks.length} kitabı kaydetmek istediğinizden emin misiniz?`)) {
+        let saved = 0;
+        let errors = 0;
+        
+        validBooks.forEach((book, index) => {
+            $.ajax({
+                url: '/api/books/add',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(book),
+                success: function() {
+                    saved++;
+                    if (saved + errors === validBooks.length) {
+                        showToast(`${saved} kitap kaydedildi`, 'success');
+                        $('#fetchBooksModal').modal('hide');
+                        if (typeof loadBooks === 'function') {
+                            loadBooks(1);
+                        }
+                    }
+                },
+                error: function() {
+                    errors++;
+                    if (saved + errors === validBooks.length) {
+                        showToast(`${saved} kitap kaydedildi, ${errors} hata`, 'warning');
+                    }
+                }
+            });
+        });
+    }
+}
+
+// Export books - inline
+function exportBooks() {
+    const link = document.createElement('a');
+    link.href = '/api/export/books';
+    link.download = `kitaplar_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.click();
+    showToast('Excel dosyası indiriliyor...', 'success');
+}
+
+// Import books - inline
+function importBooks() {
+    const fileInput = $('#importFile')[0];
+    
+    if (!fileInput.files.length) {
+        showToast('Lütfen bir dosya seçin', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    $.ajax({
+        url: '/api/import/books',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            showToast(response.message, 'success');
+            $('#importModal').modal('hide');
+            if (typeof loadBooks === 'function') {
+                loadBooks(1);
+            }
+        },
+        error: function(xhr) {
+            showToast(xhr.responseJSON?.message || 'İçe aktarma hatası', 'error');
+        }
+    });
+}
+
+$(function() {
+    // Yeni Kitap Ekleme Form Handler - KAYDET BUTONU İÇİN
+    $('#addBookForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // addBook() fonksiyonunu çağır (books-and-transactions.js'de tanımlı)
+        if (typeof addBook === 'function') {
+            addBook();
+        } else {
+            // Fallback: Direkt AJAX
+            const isbn = $('#addBookISBN').val().trim();
+            if (!isbn) {
+                showToast('ISBN numarası gerekli', 'warning');
+                return;
+            }
+            
+            const bookData = {
+                isbn: isbn,
+                title: $('#addBookTitle').val(),
+                authors: $('#addBookAuthors').val(),
+                publishers: $('#addBookPublishers').val(),
+                publish_date: $('#addBookPublishDate').val(),
+                number_of_pages: $('#addBookPages').val(),
+                languages: $('#addBookLanguages').val(),
+                quantity: $('#addBookQuantity').val() || 1,
+                shelf: $('#addBookShelf').val(),
+                cupboard: $('#addBookCupboard').val()
+            };
+            
+            // Kategoriler
+            const selectedCategories = $('#addBookCategories').val();
+            if (selectedCategories && selectedCategories.length > 0) {
+                bookData.category = selectedCategories.join(',');
+            }
+            
+            // Submit butonu loading
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalText = submitBtn.html();
+            submitBtn.html('<i class="spinner-border spinner-border-sm me-2"></i>Kaydediliyor...').prop('disabled', true);
+            
+            $.ajax({
+                url: '/api/books/add',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(bookData),
+                success: function(response) {
+                    showToast('Kitap başarıyla eklendi!', 'success');
+                    $('#addBookModal').modal('hide');
+                    $('#addBookForm')[0].reset();
+                    if (typeof loadBooks === 'function') {
+                        loadBooks(1);
+                    }
+                },
+                error: function(xhr) {
+                    const message = xhr.responseJSON?.message || 'Kitap eklenirken hata oluştu';
+                    showToast(message, 'error');
+                },
+                complete: function() {
+                    submitBtn.html(originalText).prop('disabled', false);
+                }
+            });
+        }
+    });
+    
+    // Kitap Düzenleme Form Handler
+    $('#editBookForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // updateBook() fonksiyonunu çağır (books-and-transactions.js'de tanımlı)
+        if (typeof updateBook === 'function') {
+            updateBook();
+        }
+    });
+    
+    $('#selectAllBooks').on('change', function() {
+        $('.book-checkbox').prop('checked', this.checked);
+    });
+    $('#bulkQrBtn').on('click', function() {
+        const selected = $('.book-checkbox:checked').map(function(){return this.value;}).get();
+        if(selected.length === 0) {
+            showToast('Lütfen en az bir kitap seçin', 'warning');
+            return;
+        }
+        // PDF indirmek için POST ile veri gönder
+        const form = $('<form>', {method: 'POST', action: '/api/books/qr-bulk', target: '_blank'});
+        $('<input>', {type: 'hidden', name: 'isbns', value: JSON.stringify(selected)}).appendTo(form);
+        form.appendTo('body').submit().remove();
+    });
+    $('#bulkPdfBtn').on('click', function() {
+        const selected = $('.book-checkbox:checked').map(function(){return this.value;}).get();
+        if(selected.length === 0) {
+            showToast('Lütfen en az bir kitap seçin', 'warning');
+            return;
+        }
+        // PDF indirmek için POST ile veri gönder
+        const form = $('<form>', {method: 'POST', action: '/api/books/pdf-bulk', target: '_blank'});
+        $('<input>', {type: 'hidden', name: 'isbns', value: JSON.stringify(selected)}).appendTo(form);
+        form.appendTo('body').submit().remove();
+    });
+    
+    // Excel Import Form Handler
+    $('#importForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Auto-complete modunda mı kontrol et
+        if ($(this).hasClass('auto-complete-mode') && window.autoCompletedBooks) {
+            // Otomatik tamamlanmış verileri direkt import et
+            importAutoCompletedBooks(window.autoCompletedBooks);
+            return;
+        }
+        
+        const fileInput = $('#importFile')[0];
+        if (!fileInput.files.length) {
+            showToast('Lütfen bir Excel dosyası seçin', 'warning');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        
+        // Loading state with progress
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="spinner-border spinner-border-sm me-2"></i>Yükleniyor...')
+               .prop('disabled', true);
+        
+        // Progress indicator for large files
+        const fileSize = fileInput.files[0].size;
+        if (fileSize > 100000) {
+            const progressHtml = `
+                <div id="bookImportProgress" class="mt-3">
+                    <div class="progress">
+                        <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted mt-1 d-block">
+                        📚 Kitaplar işleniyor... Büyük dosyalar için lütfen bekleyin
+                    </small>
+                </div>
+            `;
+            $(this).find('.modal-body').append(progressHtml);
+            
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 12;
+                if (progress > 95) progress = 95;
+                
+                $('#bookImportProgress .progress-bar').css('width', progress + '%');
+            }, 600);
+            
+            $(document).one('book-import-complete', function() {
+                clearInterval(progressInterval);
+                $('#bookImportProgress .progress-bar').css('width', '100%');
+            });
+        }
+        
+        $.ajax({
+            url: '/api/import/books',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            timeout: 300000, // 5 dakika timeout (büyük dosyalar için)
+            success: function(response) {
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    $('#importModal').modal('hide');
+                    if (typeof loadBooks === 'function') {
+                        loadBooks(1);
+                    }
+                } else {
+                    showToast(response.message, 'error');
+                }
+            },
+            error: function(xhr) {
+                const message = xhr.responseJSON?.message || 'Excel yükleme hatası';
+                showToast(message, 'error');
+                    },
+        complete: function() {
+            $(document).trigger('book-import-complete');
+            setTimeout(() => {
+                submitBtn.html(originalText).prop('disabled', false);
+                $('#bookImportProgress').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 1500);
+        }
+        });
+    });
+
+    // Excel file önizleme ve otomatik tamamlama özellikleri
+    $('#importFile').on('change', function() {
+        const file = this.files[0];
+        if (!file) {
+            $('#previewCard').hide();
+            $('#isbnAutoCompleteCard').hide();
+            return;
+        }
+
+        // Excel dosyasını oku ve önizle
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const workbook = XLSX.read(e.target.result, {type: 'binary'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                
+                if (jsonData.length > 0) {
+                    showPreviewTable(jsonData);
+                    checkForAutoCompleteOption(jsonData);
+                }
+            } catch (error) {
+                console.error('Excel okuma hatası:', error);
+                showToast('Excel dosyası okunamadı. Lütfen geçerli bir Excel dosyası seçin.', 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
+    });
+
+    // Otomatik tamamlama butonu click handler
+    $('#autoCompleteBtn').on('click', function() {
+        autoCompleteFromISBNs();
+    });
+
+    // Önizleme tablosunu göster
+    function showPreviewTable(data) {
+        if (data.length === 0) return;
+        
+        let html = '<table class="table table-sm table-striped">';
+        
+        // Header
+        if (data[0]) {
+            html += '<thead class="table-dark"><tr>';
+            data[0].forEach(header => {
+                html += `<th>${header || 'Boş'}</th>`;
+            });
+            html += '</tr></thead>';
+        }
+        
+        // İlk 10 satırı göster
+        html += '<tbody>';
+        for (let i = 1; i < Math.min(11, data.length); i++) {
+            if (data[i]) {
+                html += '<tr>';
+                for (let j = 0; j < (data[0] || []).length; j++) {
+                    html += `<td>${data[i][j] || ''}</td>`;
+                }
+                html += '</tr>';
+            }
+        }
+        if (data.length > 11) {
+            html += `<tr><td colspan="${data[0].length}" class="text-center text-muted">... ve ${data.length - 11} satır daha</td></tr>`;
+        }
+        html += '</tbody></table>';
+        
+        $('#previewTable').html(html);
+        $('#previewCard').show();
+    }
+
+    // Auto-complete seçeneğini kontrol et
+    function checkForAutoCompleteOption(data) {
+        if (data.length < 2) return;
+        
+        const headers = data[0].map(h => (h || '').toString().toLowerCase());
+        const hasISBN = headers.some(h => h.includes('isbn') || h.includes('kitap_no'));
+        
+        if (hasISBN) {
+            // Diğer gerekli sütunların kaçının boş olduğunu kontrol et
+            const requiredHeaders = ['başlık', 'title', 'yazar', 'author'];
+            const hasCompleteData = requiredHeaders.some(rh => 
+                headers.some(h => h.includes(rh))
+            );
+            
+            if (!hasCompleteData) {
+                $('#isbnAutoCompleteCard').show();
+                $('#autoCompleteStatus').text('Eksik bilgiler tespit edildi. ISBN\'lerden otomatik tamamlama yapabilirsiniz.');
+            }
+        }
+    }
+
+    // ISBN'lerden otomatik tamamlama
+    function autoCompleteFromISBNs() {
+        const file = $('#importFile')[0].files[0];
+        if (!file) {
+            showToast('Önce bir Excel dosyası seçin', 'warning');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const workbook = XLSX.read(e.target.result, {type: 'binary'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                // ISBN sütununu bul
+                let isbns = [];
+                jsonData.forEach(row => {
+                    Object.keys(row).forEach(key => {
+                        if (key.toLowerCase().includes('isbn') || key.toLowerCase().includes('kitap_no')) {
+                            const isbn = row[key]?.toString().trim();
+                            if (isbn && isbn.length >= 10) {
+                                isbns.push(isbn);
+                            }
+                        }
+                    });
+                });
+
+                if (isbns.length === 0) {
+                    showToast('Excel dosyasında ISBN bilgisi bulunamadı', 'warning');
+                    return;
+                }
+
+                // Tekrarları temizle
+                isbns = [...new Set(isbns)];
+                
+                if (isbns.length > 50) {
+                    if (!confirm(`${isbns.length} adet ISBN bulundu. Bu çok fazla API isteği yapacak. Devam etmek istiyor musunuz?`)) {
+                        return;
+                    }
+                }
+
+                fetchBooksFromISBNs(isbns);
+
+            } catch (error) {
+                console.error('Excel işleme hatası:', error);
+                showToast('Excel dosyası işlenemedi', 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
+    }
+
+    // ISBN listesinden kitap bilgilerini çek
+    function fetchBooksFromISBNs(isbns) {
+        const btn = $('#autoCompleteBtn');
+        const progress = $('#autoCompleteProgress');
+        const statusEl = $('#autoCompleteStatus');
+        
+        btn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm"></i> İşleniyor...');
+        progress.show();
+        
+        let completed = 0;
+        const total = isbns.length;
+        const results = [];
+        
+        statusEl.text(`0/${total} ISBN işlendi`);
+        
+        // Batch olarak işle (5'er 5'er)
+        const batchSize = 5;
+        let currentBatch = 0;
+        
+        function processBatch() {
+            const start = currentBatch * batchSize;
+            const end = Math.min(start + batchSize, isbns.length);
+            const currentISBNs = isbns.slice(start, end);
+            
+            if (currentISBNs.length === 0) {
+                // Tamamlandı
+                btn.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Tamamlandı');
+                progress.hide();
+                statusEl.text(`${completed}/${total} ISBN başarıyla işlendi`);
+                
+                // Sonuçları göster
+                if (results.length > 0) {
+                    displayAutoCompleteResults(results);
+                }
+                return;
+            }
+            
+            $.ajax({
+                url: '/api/books/fetch-bulk',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({isbns: currentISBNs}),
+                success: function(response) {
+                    if (response.books) {
+                        results.push(...response.books);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Batch fetch error:', xhr);
+                },
+                complete: function() {
+                    completed += currentISBNs.length;
+                    const progressPercent = (completed / total) * 100;
+                    progress.find('.progress-bar').css('width', progressPercent + '%');
+                    statusEl.text(`${completed}/${total} ISBN işlendi`);
+                    
+                    currentBatch++;
+                    // Sonraki batch için kısa bekleme
+                    setTimeout(processBatch, 1000);
+                }
+            });
+        }
+        
+        processBatch();
+    }
+
+    // Otomatik tamamlama sonuçlarını göster
+    function displayAutoCompleteResults(results) {
+        const successCount = results.filter(r => !r.error).length;
+        const errorCount = results.filter(r => r.error).length;
+        
+        showToast(`${successCount} kitap bilgisi bulundu, ${errorCount} ISBN için bilgi bulunamadı`, 'info');
+        
+        // Başarılı sonuçları önizlemede göster
+        const successResults = results.filter(r => !r.error);
+        if (successResults.length > 0) {
+            displayCompletedPreview(successResults);
+        }
+    }
+
+    // Tamamlanmış önizlemeyi göster
+    function displayCompletedPreview(books) {
+        // Global değişkende sakla
+        window.autoCompletedBooks = books;
+        
+        let html = '<table class="table table-sm table-striped">';
+        html += '<thead class="table-success"><tr>';
+        html += '<th>ISBN</th><th>Başlık</th><th>Yazar</th><th>Yayınevi</th><th>Yıl</th><th>Sayfa</th>';
+        html += '</tr></thead><tbody>';
+        
+        books.forEach(book => {
+            html += '<tr>';
+            html += `<td>${book.isbn || ''}</td>`;
+            html += `<td>${book.title || ''}</td>`;
+            html += `<td>${book.authors || ''}</td>`;
+            html += `<td>${book.publishers || ''}</td>`;
+            html += `<td>${book.publish_date || ''}</td>`;
+            html += `<td>${book.number_of_pages || ''}</td>`;
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        html += `<div class="alert alert-success mt-2">
+            <i class="bi bi-check-circle"></i> ${books.length} kitap bilgisi otomatik olarak tamamlandı!
+            <br><small>Şimdi "Yükle" butonuna basarak bu bilgileri veritabanına kaydedebilirsiniz.</small>
+        </div>`;
+        
+        $('#previewTable').html(html);
+        
+        // Excel dosya inputunu kaldır ve otomatik import moduna geç
+        $('#importFile').prop('required', false);
+        $('#importForm').addClass('auto-complete-mode');
+    }
+
+    // Otomatik tamamlanmış kitapları import et
+    function importAutoCompletedBooks(books) {
+        const submitBtn = $('#importForm button[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        submitBtn.html('<i class="spinner-border spinner-border-sm me-2"></i>Kaydediliyor...')
+               .prop('disabled', true);
+
+        $.ajax({
+            url: '/api/books/import-bulk',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({books: books}),
+            timeout: 300000, // 5 dakika timeout
+            success: function(response) {
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    $('#importModal').modal('hide');
+                    if (typeof loadBooks === 'function') {
+                        loadBooks(1);
+                    }
+                } else {
+                    showToast(response.message, 'error');
+                }
+            },
+            error: function(xhr) {
+                const message = xhr.responseJSON?.message || 'Kitap kaydetme hatası';
+                showToast(message, 'error');
+            },
+            complete: function() {
+                submitBtn.html(originalText).prop('disabled', false);
+            }
+        });
+    }
+
+    // === YENİ: FETCH MODAL FONKSİYONLARI ===
+    
+    // Dosya yükleme seçeneklerini göster
+    function showFetchFileOptions() {
+        $('#fetchFileUploadArea').slideToggle();
+    }
+
+    // Dosya yükleme event handler - İYİLEŞTİRİLMİŞ
+    $('#fetchFileInput').on('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        console.log('📁 Dosya seçildi:', file.name, file.type, file.size);
+        showToast('Dosya okunuyor...', 'info');
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let content = e.target.result;
+                let isbns = [];
+
+                console.log('📖 Dosya içeriği okundu, boyut:', content.length);
+
+                if (file.name.endsWith('.csv')) {
+                    // CSV işle
+                    console.log('📊 CSV dosyası işleniyor...');
+                    const lines = content.split('\n');
+                    lines.forEach((line, index) => {
+                        const cleanLine = line.trim();
+                        if (cleanLine) {
+                            // ISBN çıkar (sadece sayılar ve X)
+                            const isbn = cleanLine.replace(/[^0-9X]/g, '');
+                            if (isbn.length >= 10) {
+                                isbns.push(isbn);
+                                console.log(`📋 Satır ${index + 1}: ${cleanLine} -> ${isbn}`);
+                            }
+                        }
+                    });
+                } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    // Excel işle
+                    console.log('📊 Excel dosyası işleniyor...');
+                    
+                    // XLSX kütüphanesi yüklü mü kontrol et
+                    if (typeof XLSX === 'undefined') {
+                        throw new Error('XLSX kütüphanesi yüklenmedi');
+                    }
+                    
+                    const workbook = XLSX.read(content, {type: 'binary'});
+                    console.log('📚 Excel workbook okundu:', workbook.SheetNames);
+                    
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); // Header array olarak
+                    
+                    console.log('📋 Excel verileri:', jsonData.length, 'satır');
+                    
+                    jsonData.forEach((row, rowIndex) => {
+                        if (Array.isArray(row)) {
+                            row.forEach((cell, cellIndex) => {
+                                if (cell) {
+                                    const isbn = String(cell).replace(/[^0-9X]/g, '');
+                                    if (isbn.length >= 10) {
+                                        isbns.push(isbn);
+                                        console.log(`📋 Satır ${rowIndex + 1}, Hücre ${cellIndex + 1}: ${cell} -> ${isbn}`);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    // TXT işle
+                    console.log('📄 TXT dosyası işleniyor...');
+                    const lines = content.split('\n');
+                    lines.forEach((line, index) => {
+                        const cleanLine = line.trim();
+                        if (cleanLine) {
+                            const isbn = cleanLine.replace(/[^0-9X]/g, '');
+                            if (isbn.length >= 10) {
+                                isbns.push(isbn);
+                                console.log(`📋 Satır ${index + 1}: ${cleanLine} -> ${isbn}`);
+                            }
+                        }
+                    });
+                }
+
+                // Tekrarları temizle
+                isbns = [...new Set(isbns)];
+                console.log('📊 Toplam bulunan ISBN:', isbns.length);
+                
+                if (isbns.length > 0) {
+                    $('#fetchISBNs').val(isbns.join('\n'));
+                    $('#fetchFileUploadArea').slideUp();
+                    showToast(`✅ ${isbns.length} ISBN başarıyla yüklendi!`, 'success');
+                } else {
+                    showToast('❌ Dosyada geçerli ISBN bulunamadı', 'warning');
+                }
+
+            } catch (error) {
+                console.error('Dosya okuma hatası:', error);
+                showToast('❌ Dosya okuma hatası: ' + error.message, 'error');
+            }
+        };
+
+        reader.onerror = function(error) {
+            console.error('FileReader hatası:', error);
+            showToast('❌ Dosya okuma hatası', 'error');
+        };
+
+        // Dosya tipine göre okuma yöntemi
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            console.log('📖 Excel dosyası binary olarak okunuyor...');
+            reader.readAsBinaryString(file);
+        } else {
+            console.log('📖 Metin dosyası olarak okunuyor...');
+            reader.readAsText(file);
+        }
+    });
+
+    // Fetch ve otomatik kaydet
+    function fetchAndSaveAll() {
+        const isbns = $('#fetchISBNs').val().split('\n').map(isbn => isbn.trim()).filter(isbn => isbn);
+        
+        if (isbns.length === 0) {
+            showToast('Lütfen en az bir ISBN girin', 'warning');
+            return;
+        }
+
+        if (isbns.length > 50) {
+            if (!confirm(`${isbns.length} adet ISBN bulundu. Bu çok fazla API isteği yapacak. Devam etmek istiyor musunuz?`)) {
+                return;
+            }
+        }
+
+        // UI güncellemeleri
+        const btn = $('#fetchAndSaveBtn');
+        const originalText = btn.html();
+        btn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm"></i> İşleniyor...');
+
+        $('#fetchProgress').show();
+        $('#fetchStatus').html('<p class="text-primary">ISBN\'ler işleniyor...</p>');
+
+        let completed = 0;
+        const total = isbns.length;
+        const results = [];
+
+        // Batch işleme (5'er 5'er)
+        const batchSize = 5;
+        let currentBatch = 0;
+
+        function processBatch() {
+            const start = currentBatch * batchSize;
+            const end = Math.min(start + batchSize, isbns.length);
+            const currentISBNs = isbns.slice(start, end);
+
+            if (currentISBNs.length === 0) {
+                // İşlem tamamlandı - otomatik kaydet
+                if (results.length > 0) {
+                    const successBooks = results.filter(r => !r.error);
+                    if (successBooks.length > 0) {
+                        saveDirectlyToDatabase(successBooks, btn, originalText);
+                    } else {
+                        showToast('Hiç kitap bilgisi bulunamadı', 'warning');
+                        btn.prop('disabled', false).html(originalText);
+                        $('#fetchProgress').hide();
+                    }
+                } else {
+                    showToast('ISBN işleme hatası', 'error');
+                    btn.prop('disabled', false).html(originalText);
+                    $('#fetchProgress').hide();
+                }
+                return;
+            }
+
+            $.ajax({
+                url: '/api/books/fetch-bulk',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({isbns: currentISBNs}),
+                success: function(response) {
+                    if (response.books) {
+                        results.push(...response.books);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Batch fetch error:', xhr);
+                },
+                complete: function() {
+                    completed += currentISBNs.length;
+                    const progressPercent = (completed / total) * 100;
+                    $('#fetchProgress .progress-bar').css('width', progressPercent + '%');
+                    $('#fetchStatus').html(`<p class="text-info">${completed}/${total} ISBN işlendi</p>`);
+
+                    currentBatch++;
+                    setTimeout(processBatch, 1000); // 1 saniye bekleme
+                }
+            });
+        }
+
+        processBatch();
+    }
+
+    // Doğrudan veritabanına kaydet
+    function saveDirectlyToDatabase(books, btn, originalText) {
+        $('#fetchStatus').html('<p class="text-success">Veritabanına kaydediliyor...</p>');
+
+        $.ajax({
+            url: '/api/books/import-bulk',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({books: books}),
+            success: function(response) {
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    
+                    // Kitap listesini yenile
+                    if (typeof loadBooks === 'function') {
+                        setTimeout(() => loadBooks(1), 1000);
+                    }
+                } else {
+                    showToast(response.message, 'error');
+                }
+            },
+            error: function(xhr) {
+                const message = xhr.responseJSON?.message || 'Kaydetme hatası';
+                showToast(message, 'error');
+            },
+            complete: function() {
+                btn.prop('disabled', false).html(originalText);
+                $('#fetchProgress').hide();
+                $('#fetchStatus').html('<p class="text-muted small">İşlem tamamlandı</p>');
+            }
+        });
+    }
+
+    // Eksik kapak resimlerini tamamla
+    function downloadMissingCovers() {
+        if (!confirm('Kapak resmi eksik kitaplar için otomatik resim indirme işlemi başlatılsın mı?\n(En fazla 20 kitap işlenir)')) {
+            return;
+        }
+
+        showToast('Kapak resimleri indiriliyor...', 'info');
+
+        $.ajax({
+            url: '/api/books/download-missing-covers',
+            method: 'POST',
+            timeout: 120000, // 2 dakika timeout
+            success: function(response) {
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    
+                    // Kitap listesini yenile
+                    if (typeof loadBooks === 'function') {
+                        setTimeout(() => loadBooks(1), 1000);
+                    }
+                    
+                    // Detayları göster
+                    if (response.processed > 0) {
+                        console.log('Cover download stats:', response);
+                    }
+                } else {
+                    showToast(response.message, 'error');
+                }
+            },
+            error: function(xhr) {
+                const message = xhr.responseJSON?.message || 'Kapak resmi indirme hatası';
+                showToast(message, 'error');
+            }
+        });
+    }
+
+    // PDF İndir
+    function exportBooksPDF() {
+        showToast('PDF oluşturuluyor...', 'info');
+        fetch('/api/books/list-pdf')
+            .then(async (response) => {
+                if (!response.ok) {
+                    let message = 'PDF indirilemedi';
+                    try { message = (await response.json()).error || message; } catch (_) { /* ignore */ }
+                    throw new Error(message);
+                }
+                const ct = (response.headers.get('Content-Type') || '').toLowerCase();
+                if (!ct.includes('application/pdf')) {
+                    let message = 'PDF oluşturulamadı';
+                    try { message = (await response.json()).error || message; } catch (_) { /* ignore */ }
+                    throw new Error(message);
+                }
+                const blob = await response.blob();
+                const cd = response.headers.get('Content-Disposition') || '';
+                const match = cd.match(/filename="?([^";]+)"?/i);
+                const filename = match ? match[1] : `kitaplar_listesi_${new Date().toISOString().slice(0,16).replace(/[-:T]/g,'')}.pdf`;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                URL.revokeObjectURL(url);
+                a.remove();
+                showToast('PDF dosyası indirildi!', 'success');
+            })
+            .catch((err) => {
+                console.error('Books PDF Error:', err);
+                showToast(err.message || 'PDF oluşturulurken hata oluştu', 'error');
+            });
+    }
+    // Global erişim
+    window.exportBooksPDF = exportBooksPDF;
+    
+    // Tüm kitapların bilgilerini tamamla
+    window.completeAllBooksInfo = function() {
+        // Onay al
+        if (!confirm('TÜM KİTAPLARIN bilgileri ISBN üzerinden kontrol edilecek ve güncellenecek.\n\n' +
+                    '⚠️ Bu işlem:\n' +
+                    '• Tüm kitapları 20\'şerli gruplar halinde işleyecek\n' +
+                    '• Dolu alanları bile API verileriyle karşılaştıracak\n' +
+                    '• Yanlış/eksik bilgileri düzeltecek\n' +
+                    '• Eksik kapak resimlerini indirecek\n' +
+                    '• Uzun sürebilir\n\n' +
+                    'Devam etmek istiyor musunuz?')) {
+            return;
+        }
+        
+        // Global değişkenler
+        let isProcessing = false;
+        let isCancelled = false;
+        let allISBNs = [];
+        let currentIndex = 0;
+        let processedTotal = 0;
+        let updatedTotal = 0;
+        let verifiedTotal = 0;
+        let failedTotal = 0;
+        
+        // Progress modal oluştur
+        const progressModal = $(`
+            <div class="modal fade" id="completeInfoModal" tabindex="-1" data-bs-backdrop="static">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-dark text-white">
+                            <h5 class="modal-title">
+                                <i class="bi bi-database-fill-check"></i> Tüm Kitap Bilgileri Doğrulanıyor ve Güncelleniyor
+                            </h5>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>Kapsamlı Güncelleme Modu:</strong> Tüm kitap bilgileri API'den kontrol ediliyor.
+                                Mevcut bilgiler de doğrulanıp gerekirse güncellenecek.
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>İşlem Durumu:</h6>
+                                <div class="progress" style="height: 30px;">
+                                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                                         role="progressbar" style="width: 0%">0%</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row text-center mb-3">
+                                <div class="col-md-3">
+                                    <div class="card bg-primary text-white">
+                                        <div class="card-body p-2">
+                                            <h4 id="processedCount">0</h4>
+                                            <small>İşlenen</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body p-2">
+                                            <h4 id="updatedCount">0</h4>
+                                            <small>Güncellenen</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-info text-white">
+                                        <div class="card-body p-2">
+                                            <h4 id="verifiedCount">0</h4>
+                                            <small>Doğrulanan</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-danger text-white">
+                                        <div class="card-body p-2">
+                                            <h4 id="failedCount">0</h4>
+                                            <small>Başarısız</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="currentBatch" class="mb-3" style="display: none;">
+                                <h6>Şu an işlenen kitaplar: <span id="batchInfo"></span></h6>
+                                <div class="list-group" id="batchList" style="max-height: 200px; overflow-y: auto;"></div>
+                            </div>
+                            
+                            <div id="completionMessage" class="alert alert-success" style="display: none;">
+                                <i class="bi bi-check-circle"></i> <span id="completionText"></span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-danger" id="cancelBtn">
+                                <i class="bi bi-x-circle"></i> İptal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+        
+        // Modal'ı body'e ekle ve göster
+        $('body').append(progressModal);
+        $('#completeInfoModal').modal('show');
+        
+        // Önce tüm ISBN'leri al
+        showToast('Kitap listesi alınıyor...', 'info');
+        
+        $.ajax({
+            url: '/api/books/get-all-isbns',
+            method: 'GET',
+            success: function(response) {
+                if (response.success && response.isbns) {
+                    allISBNs = response.isbns;
+                    const totalBooks = allISBNs.length;
+                    
+                    if (totalBooks === 0) {
+                        showToast('Güncellenecek kitap bulunamadı', 'warning');
+                        $('#completeInfoModal').modal('hide');
+                        return;
+                    }
+                    
+                    showToast(`${totalBooks} kitap bulundu. İşlem başlatılıyor...`, 'info');
+                    isProcessing = true;
+                    processBatch();
+                } else {
+                    showToast('Kitap listesi alınamadı', 'error');
+                    $('#completeInfoModal').modal('hide');
+                }
+            },
+            error: function(xhr) {
+                showToast('Kitap listesi alınırken hata oluştu', 'error');
+                $('#completeInfoModal').modal('hide');
+            }
+        });
+        
+        // Batch işleme fonksiyonu
+        function processBatch() {
+            if (!isProcessing || isCancelled) {
+                return;
+            }
+            
+            const batchSize = 20;
+            const batch = allISBNs.slice(currentIndex, currentIndex + batchSize);
+            
+            if (batch.length === 0) {
+                // İşlem tamamlandı
+                completeProcess();
+                return;
+            }
+            
+            $('#currentBatch').show();
+            $('#batchInfo').text(`(${currentIndex + 1}-${Math.min(currentIndex + batchSize, allISBNs.length)} / ${allISBNs.length})`);
+            $('#batchList').empty();
+            
+            // Batch'teki ISBN'leri göster
+            batch.forEach(isbn => {
+                $('#batchList').append(`
+                    <div class="list-group-item list-group-item-light" data-isbn="${isbn}">
+                        <small><i class="spinner-border spinner-border-sm"></i> ${isbn} - İşleniyor...</small>
+                    </div>
+                `);
+            });
+            
+            // API çağrısı
+            $.ajax({
+                url: '/api/books/verify-and-update-batch',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    isbns: batch,
+                    force_update: true  // Tüm alanları güncelle
+                }),
+                timeout: 120000, // 2 dakika timeout
+                success: function(response) {
+                    if (response.success) {
+                        // Sayaçları güncelle
+                        processedTotal += response.processed || batch.length;
+                        updatedTotal += response.updated || 0;
+                        verifiedTotal += response.verified || 0;
+                        failedTotal += response.failed || 0;
+                        
+                        $('#processedCount').text(processedTotal);
+                        $('#updatedCount').text(updatedTotal);
+                        $('#verifiedCount').text(verifiedTotal);
+                        $('#failedCount').text(failedTotal);
+                        
+                        // Progress bar güncelle
+                        const percentage = Math.round((processedTotal / allISBNs.length) * 100);
+                        $('.progress-bar').css('width', percentage + '%').text(percentage + '%');
+                        
+                        // Sonuçları listede göster
+                        if (response.results) {
+                            response.results.forEach(result => {
+                                const item = $(`#batchList [data-isbn="${result.isbn}"]`);
+                                if (result.status === 'updated') {
+                                    item.removeClass('list-group-item-light').addClass('list-group-item-success');
+                                    item.html(`<small>✓ ${result.isbn} - Güncellendi (${result.updated_fields?.join(', ') || 'bilgiler'})</small>`);
+                                } else if (result.status === 'verified') {
+                                    item.removeClass('list-group-item-light').addClass('list-group-item-info');
+                                    item.html(`<small>✓ ${result.isbn} - Doğrulandı</small>`);
+                                } else if (result.status === 'failed') {
+                                    item.removeClass('list-group-item-light').addClass('list-group-item-danger');
+                                    item.html(`<small>✗ ${result.isbn} - ${result.error || 'Hata'}</small>`);
+                                }
+                            });
+                        }
+                        
+                        // Sonraki batch'e geç
+                        currentIndex += batchSize;
+                        
+                        // 1.5 saniye bekle ve devam et (API rate limiting için)
+                        setTimeout(() => {
+                            processBatch();
+                        }, 1500);
+                        
+                    } else {
+                        showToast(response.message || 'Batch işleme hatası', 'error');
+                        isCancelled = true;
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Batch processing error:', xhr);
+                    const message = xhr.responseJSON?.message || 'İşlem hatası';
+                    showToast(message, 'error');
+                    
+                    // Hata durumunda yine de devam et
+                    failedTotal += batch.length;
+                    $('#failedCount').text(failedTotal);
+                    
+                    currentIndex += batchSize;
+                    setTimeout(() => {
+                        processBatch();
+                    }, 2000);
+                }
+            });
+        }
+        
+        // İşlem tamamlandığında
+        function completeProcess() {
+            isProcessing = false;
+            $('#currentBatch').hide();
+            $('#cancelBtn').text('Kapat').removeClass('btn-danger').addClass('btn-primary');
+            
+            $('#completionMessage').show();
+            $('#completionText').html(`
+                <strong>İşlem tamamlandı!</strong><br>
+                • ${processedTotal} kitap işlendi<br>
+                • ${updatedTotal} kitap güncellendi<br>
+                • ${verifiedTotal} kitap doğrulandı<br>
+                • ${failedTotal} kitap başarısız<br>
+                <small class="text-muted">Toplam süre: ${Math.round(processedTotal * 1.5 / 60)} dakika</small>
+            `);
+            
+            // Başarılı güncelleme varsa listeyi yenile
+            if (updatedTotal > 0) {
+                showToast(`${updatedTotal} kitap başarıyla güncellendi!`, 'success');
+                if (typeof loadBooks === 'function') {
+                    setTimeout(() => loadBooks(1), 1000);
+                }
+            }
+        }
+        
+        // İptal butonu
+        $('#cancelBtn').on('click', function() {
+            if (isProcessing) {
+                if (confirm('İşlem devam ediyor. İptal etmek istediğinizden emin misiniz?')) {
+                    isCancelled = true;
+                    isProcessing = false;
+                    showToast('İşlem iptal edildi', 'warning');
+                    $('#completeInfoModal').modal('hide');
+                }
+            } else {
+                $('#completeInfoModal').modal('hide');
+            }
+        });
+        
+        // Modal kapandığında temizle
+        $('#completeInfoModal').on('hidden.bs.modal', function() {
+            setTimeout(() => {
+                $(this).remove();
+            }, 500);
+        });
+    };
+});
+</script>
+
+<!-- XLSX kütüphanesi - Excel okuma için -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+{% endblock %}

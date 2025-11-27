@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+
+{% block title %}Online Ödünç Alma Talepleri - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1><i class="fas fa-tasks"></i> Online Ödünç Alma Talepleri</h1>
+                <p class="text-muted">Kullanıcıların online ödünç alma taleplerini yönetin</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtreler -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="statusFilter">Durum</label>
+                                <select class="form-control" id="statusFilter">
+                                    <option value="">Tüm Durumlar</option>
+                                    <option value="pending">Beklemede</option>
+                                    <option value="approved">Onaylandı</option>
+                                    <option value="rejected">Reddedildi</option>
+                                    <option value="cancelled">İptal Edildi</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="dateFilter">Tarih</label>
+                                <select class="form-control" id="dateFilter">
+                                    <option value="">Tüm Tarihler</option>
+                                    <option value="today">Bugün</option>
+                                    <option value="week">Bu Hafta</option>
+                                    <option value="month">Bu Ay</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="searchFilter">Arama</label>
+                                <input type="text" class="form-control" id="searchFilter" placeholder="Üye adı, kitap adı...">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button class="btn btn-primary btn-block" onclick="filterRequests()">
+                                    <i class="fas fa-filter"></i> Filtrele
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İstatistikler -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="totalRequests">0</h4>
+                            <p class="mb-0">Toplam Talep</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-list fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="pendingRequests">0</h4>
+                            <p class="mb-0">Bekleyen</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="approvedRequests">0</h4>
+                            <p class="mb-0">Onaylanan</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="rejectedRequests">0</h4>
+                            <p class="mb-0">Reddedilen</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-times fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Talepler Listesi -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-table"></i> Talep Listesi</h5>
+                    <div class="card-tools">
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadRequests()">
+                            <i class="fas fa-sync-alt"></i> Yenile
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="requestsList">
+                        <!-- Talepler buraya yüklenecek -->
+                    </div>
+                    <div id="loadingRequests" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Yükleniyor...</span>
+                        </div>
+                    </div>
+                    <div id="noRequestsFound" class="text-center d-none">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5>Talep bulunamadı</h5>
+                        <p class="text-muted">Filtreleri değiştirip tekrar deneyin.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Onay/Red Modal -->
+<div class="modal fade" id="actionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="actionModalTitle">
+                    <i class="fas fa-check"></i> Talep Onayla
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="requestDetails">
+                    <!-- Talep detayları buraya yüklenecek -->
+                </div>
+                <div id="rejectionReasonDiv" class="d-none">
+                    <div class="form-group">
+                        <label for="rejectionReason">Red Nedeni *</label>
+                        <textarea class="form-control" id="rejectionReason" rows="3" placeholder="Red nedenini yazın..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success" id="approveBtn" onclick="approveRequest()">
+                    <i class="fas fa-check"></i> Onayla
+                </button>
+                <button type="button" class="btn btn-danger" id="rejectBtn" onclick="rejectRequest()">
+                    <i class="fas fa-times"></i> Reddet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.request-item {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.request-item:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.request-item.pending {
+    border-left: 4px solid #ffc107;
+}
+
+.request-item.approved {
+    border-left: 4px solid #28a745;
+}
+
+.request-item.rejected {
+    border-left: 4px solid #dc3545;
+}
+
+.request-item.cancelled {
+    border-left: 4px solid #6c757d;
+}
+
+.request-header {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px 8px 0 0;
+}
+
+.request-body {
+    padding: 1rem;
+}
+
+.request-footer {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0 0 8px 8px;
+    border-top: 1px solid #e9ecef;
+}
+
+.status-badge {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.book-info {
+    background: #e3f2fd;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.member-info {
+    background: #f3e5f5;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+</style>
+
+<script>
+let currentRequests = [];
+let currentActionRequest = null;
+
+// Sayfa yüklendiğinde
+$(document).ready(function() {
+    loadRequests();
+});
+
+// Talepleri yükle
+function loadRequests() {
+    $('#loadingRequests').removeClass('d-none');
+    $('#requestsList').empty();
+    $('#noRequestsFound').addClass('d-none');
+    
+    fetch('/api/online-borrow/requests')
+        .then(response => response.json())
+        .then(data => {
+            currentRequests = data.requests;
+            displayRequests(data.requests);
+            updateStatistics(data.requests);
+            $('#loadingRequests').addClass('d-none');
+        });
+}
+
+// Talepleri göster
+function displayRequests(requests) {
+    const container = $('#requestsList');
+    container.empty();
+    
+    if (requests.length === 0) {
+        $('#noRequestsFound').removeClass('d-none');
+        return;
+    }
+    
+    requests.forEach(request => {
+        const statusClass = getStatusClass(request.status);
+        const statusText = getStatusText(request.status);
+        
+        const card = `
+            <div class="request-item ${request.status}">
+                <div class="request-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h6 class="mb-0">${request.book_title}</h6>
+                            <small class="text-muted">Talep ID: ${request.id}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge badge-${statusClass} status-badge">${statusText}</span>
+                        </div>
+                        <div class="col-md-3 text-right">
+                            <small class="text-muted">${request.created_at}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="request-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="member-info">
+                                <h6><i class="fas fa-user"></i> Üye Bilgileri</h6>
+                                <div><strong>Ad Soyad:</strong> ${request.member_name}</div>
+                                <div><strong>Talep Eden:</strong> ${request.member_name}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="book-info">
+                                <h6><i class="fas fa-book"></i> Kitap Bilgileri</h6>
+                                <div><strong>Kitap:</strong> ${request.book_title}</div>
+                                <div><strong>ISBN:</strong> ${request.isbn}</div>
+                                <div><strong>Alış Tarihi:</strong> ${request.pickup_date} ${request.pickup_time}</div>
+                            </div>
+                        </div>
+                    </div>
+                    ${request.notes ? `
+                        <div class="alert alert-info">
+                            <strong>Notlar:</strong> ${request.notes}
+                        </div>
+                    ` : ''}
+                    ${request.approved_at ? `
+                        <div class="alert alert-success">
+                            <strong>İşlem Tarihi:</strong> ${request.approved_at}<br>
+                            <strong>İşlemi Yapan:</strong> ${request.approved_by}
+                        </div>
+                    ` : ''}
+                </div>
+                ${request.status === 'pending' ? `
+                    <div class="request-footer">
+                        <div class="action-buttons">
+                            <button class="btn btn-success btn-sm" onclick="openActionModal(${request.id}, 'approve')">
+                                <i class="fas fa-check"></i> Onayla
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="openActionModal(${request.id}, 'reject')">
+                                <i class="fas fa-times"></i> Reddet
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        container.append(card);
+    });
+}
+
+// İstatistikleri güncelle
+function updateStatistics(requests) {
+    const total = requests.length;
+    const pending = requests.filter(r => r.status === 'pending').length;
+    const approved = requests.filter(r => r.status === 'approved').length;
+    const rejected = requests.filter(r => r.status === 'rejected').length;
+    
+    $('#totalRequests').text(total);
+    $('#pendingRequests').text(pending);
+    $('#approvedRequests').text(approved);
+    $('#rejectedRequests').text(rejected);
+}
+
+// Durum sınıfını al
+function getStatusClass(status) {
+    switch(status) {
+        case 'pending': return 'warning';
+        case 'approved': return 'success';
+        case 'rejected': return 'danger';
+        case 'cancelled': return 'secondary';
+        default: return 'info';
+    }
+}
+
+// Durum metnini al
+function getStatusText(status) {
+    switch(status) {
+        case 'pending': return 'Beklemede';
+        case 'approved': return 'Onaylandı';
+        case 'rejected': return 'Reddedildi';
+        case 'cancelled': return 'İptal Edildi';
+        default: return 'Bilinmiyor';
+    }
+}
+
+// Filtrele
+function filterRequests() {
+    const status = $('#statusFilter').val();
+    const date = $('#dateFilter').val();
+    const search = $('#searchFilter').val().toLowerCase();
+    
+    let filtered = currentRequests;
+    
+    // Durum filtresi
+    if (status) {
+        filtered = filtered.filter(r => r.status === status);
+    }
+    
+    // Tarih filtresi
+    if (date) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        filtered = filtered.filter(r => {
+            const requestDate = new Date(r.created_at.split(' ')[0].split('.').reverse().join('-'));
+            
+            switch(date) {
+                case 'today':
+                    return requestDate >= today;
+                case 'week':
+                    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    return requestDate >= weekAgo;
+                case 'month':
+                    const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                    return requestDate >= monthAgo;
+                default:
+                    return true;
+            }
+        });
+    }
+    
+    // Arama filtresi
+    if (search) {
+        filtered = filtered.filter(r => 
+            r.member_name.toLowerCase().includes(search) ||
+            r.book_title.toLowerCase().includes(search) ||
+            r.isbn.includes(search)
+        );
+    }
+    
+    displayRequests(filtered);
+}
+
+// Aksiyon modalını aç
+function openActionModal(requestId, action) {
+    const request = currentRequests.find(r => r.id === requestId);
+    if (!request) return;
+    
+    currentActionRequest = request;
+    
+    const isApprove = action === 'approve';
+    const title = isApprove ? 'Talep Onayla' : 'Talep Reddet';
+    const icon = isApprove ? 'check' : 'times';
+    
+    $('#actionModalTitle').html(`<i class="fas fa-${icon}"></i> ${title}`);
+    $('#approveBtn').toggleClass('d-none', !isApprove);
+    $('#rejectBtn').toggleClass('d-none', isApprove);
+    $('#rejectionReasonDiv').toggleClass('d-none', isApprove);
+    
+    const details = `
+        <div class="book-info">
+            <h6><i class="fas fa-book"></i> Kitap Bilgileri</h6>
+            <div><strong>Kitap:</strong> ${request.book_title}</div>
+            <div><strong>ISBN:</strong> ${request.isbn}</div>
+        </div>
+        <div class="member-info">
+            <h6><i class="fas fa-user"></i> Üye Bilgileri</h6>
+            <div><strong>Ad Soyad:</strong> ${request.member_name}</div>
+            <div><strong>Alış Tarihi:</strong> ${request.pickup_date} ${request.pickup_time}</div>
+        </div>
+        ${request.notes ? `
+            <div class="alert alert-info">
+                <strong>Notlar:</strong> ${request.notes}
+            </div>
+        ` : ''}
+    `;
+    
+    $('#requestDetails').html(details);
+    $('#actionModal').modal('show');
+}
+
+// Talebi onayla
+function approveRequest() {
+    if (!currentActionRequest) return;
+    
+    fetch(`/api/online-borrow/approve/${currentActionRequest.id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            $('#actionModal').modal('hide');
+            loadRequests();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Bir hata oluştu. Lütfen tekrar deneyin.', 'danger');
+    });
+}
+
+// Talebi reddet
+function rejectRequest() {
+    if (!currentActionRequest) return;
+    
+    const reason = $('#rejectionReason').val().trim();
+    if (!reason) {
+        showAlert('Lütfen red nedenini yazın.', 'warning');
+        return;
+    }
+    
+    fetch(`/api/online-borrow/reject/${currentActionRequest.id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: reason })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            $('#actionModal').modal('hide');
+            $('#rejectionReason').val('');
+            loadRequests();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Bir hata oluştu. Lütfen tekrar deneyin.', 'danger');
+    });
+}
+
+// Enter tuşu ile filtreleme
+$('#searchFilter').keypress(function(e) {
+    if (e.which == 13) {
+        filterRequests();
+    }
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Raf/Dolap Haritası{% endblock %}
+{% block content %}
+<script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+<div class="container py-4">
+    <h2 class="mb-4"><i class="bi bi-grid-3x3-gap"></i> Raf/Dolap Haritası</h2>
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <select id="shelfFilter" class="form-select">
+                <option value="">Tüm Raflar</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="cupboardFilter" class="form-select">
+                <option value="">Tüm Dolaplar</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <input type="text" id="bookSearch" class="form-control" placeholder="Kitap adı veya ISBN ile ara...">
+        </div>
+    </div>
+    <div id="shelfMapGrid" class="row g-3"></div>
+</div>
+<!-- Kitap Detay Modalı -->
+<div class="modal fade" id="bookDetailModal" tabindex="-1" aria-labelledby="bookDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bookDetailModalLabel">Kitap Detayı</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body" id="bookDetailContent">
+        <!-- Detaylar buraya gelecek -->
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let allBooks = [];
+let shelves = [];
+let cupboards = [];
+$(function() {
+    $.get('/api/shelf-map', function(res) {
+        allBooks = res.books;
+        shelves = [...new Set(allBooks.map(b => b.shelf))].sort();
+        cupboards = [...new Set(allBooks.map(b => b.cupboard))].sort();
+        shelves.forEach(s => $('#shelfFilter').append(`<option value="${s}">${s}</option>`));
+        cupboards.forEach(c => $('#cupboardFilter').append(`<option value="${c}">${c}</option>`));
+        renderGrid();
+    });
+    $('#shelfFilter, #cupboardFilter').on('change', renderGrid);
+    $('#bookSearch').on('input', renderGrid);
+});
+function renderGrid() {
+    const shelfVal = $('#shelfFilter').val();
+    const cupVal = $('#cupboardFilter').val();
+    const search = $('#bookSearch').val().toLowerCase();
+    let filtered = allBooks.filter(b =>
+        (!shelfVal || b.shelf == shelfVal) &&
+        (!cupVal || b.cupboard == cupVal) &&
+        (b.title.toLowerCase().includes(search) || b.isbn.includes(search))
+    );
+    // Grid: her raf/dolap kombinasyonu için kutu
+    let html = '<div class="row">';
+    shelves.forEach(shelf => {
+        cupboards.forEach(cup => {
+            const cellBooks = filtered.filter(b => b.shelf == shelf && b.cupboard == cup);
+            if(cellBooks.length > 0) {
+                html += `<div class='col-6 col-sm-4 col-md-3 col-lg-2 mb-3'>
+                    <div class='card h-100 shadow-sm' style='min-height:160px;'>
+                        <div class='card-header p-2 text-center bg-info text-white'>Raf ${shelf} / Dolap ${cup}</div>
+                        <div class='card-body p-2 d-flex flex-wrap justify-content-center align-items-center' style='gap:4px;'>`;
+                cellBooks.slice(0,3).forEach(book => {
+                    html += `<img loading='lazy' src='${book.image_url || "/static/img/no_cover.png"}' alt='' title='${book.title}' style='width:32px;height:48px;object-fit:cover;cursor:pointer;border-radius:3px;border:1px solid #ccc' onclick='showBookDetail(${JSON.stringify(book)})'>`;
+                });
+                if(cellBooks.length > 3) {
+                    html += `<div class='badge bg-secondary ms-1' style='cursor:pointer' onclick='showBookListModal(${JSON.stringify(cellBooks)})'>+${cellBooks.length-3} kitap</div>`;
+                }
+                html += `</div></div></div>`;
+            }
+        });
+    });
+    html += '</div>';
+    $('#shelfMapGrid').html(html);
+}
+function showBookDetail(book) {
+    let html = `<div class='text-center'>
+        <img src='${book.image_url || "/static/img/no_cover.png"}' alt='' style='width:80px;height:120px;object-fit:cover;border-radius:6px;border:1px solid #ccc'>
+        <h5 class='mt-3'>${book.title}</h5>
+        <p><b>ISBN:</b> ${book.isbn}</p>
+        <p><b>Raf:</b> ${book.shelf} <b>Dolap:</b> ${book.cupboard}</p>
+    </div>`;
+    $('#bookDetailContent').html(html);
+    const modal = new bootstrap.Modal(document.getElementById('bookDetailModal'));
+    modal.show();
+}
+function showBookListModal(books) {
+    let html = `<div style='max-height:300px;overflow:auto;'>`;
+    books.forEach(book => {
+        html += `<div class='d-flex align-items-center mb-2'>
+            <img src='${book.image_url || "/static/img/no_cover.png"}' alt='' style='width:32px;height:48px;object-fit:cover;border-radius:3px;border:1px solid #ccc;margin-right:8px;'>
+            <div>
+                <div style='font-weight:600;'>${book.title}</div>
+                <div style='font-size:12px;'>ISBN: ${book.isbn}</div>
+            </div>
+        </div>`;
+    });
+    html += `</div>`;
+    $('#bookDetailContent').html(html);
+    const modal = new bootstrap.Modal(document.getElementById('bookDetailModal'));
+    modal.show();
+}
+</script>
+{% endblock %} 

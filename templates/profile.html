@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}Profilim{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- Profil Kartı -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-person-circle" style="font-size: 5rem; color: #6c757d;"></i>
+                    </div>
+                    <h4>{{ current_user.username }}</h4>
+                    <p class="text-muted mb-3">{{ current_user.email }}</p>
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-{{ 'danger' if current_user.role == 'admin' else 'primary' if current_user.role == 'librarian' else 'secondary' }}">
+                            {{ 'Yönetici' if current_user.role == 'admin' else 'Kütüphaneci' if current_user.role == 'librarian' else 'Üye' }}
+                        </span>
+                    </div>
+                    
+                    {% if member %}
+                    <table class="table table-sm text-start">
+                        <tr>
+                            <td class="text-muted">Üye No:</td>
+                            <td class="fw-bold">{{ member.id }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Sınıf:</td>
+                            <td class="fw-bold">{{ member.sinif }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Numara:</td>
+                            <td class="fw-bold">{{ member.numara }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Üye Türü:</td>
+                            <td class="fw-bold">{{ member.uye_turu }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Kayıt Tarihi:</td>
+                            <td class="fw-bold">{{ member.join_date.strftime('%d.%m.%Y') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Güvenilirlik:</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if member.reliability_score >= 80 %}bg-success{% elif member.reliability_score >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ member.reliability_score }}%"
+                                         aria-valuenow="{{ member.reliability_score }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ "%.0f"|format(member.reliability_score) }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Henüz üyelik kaydınız oluşturulmamış.
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="bi bi-pencil"></i> Profili Düzenle
+                    </button>
+                </div>
+            </div>
+            
+            <!-- İstatistikler -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">İstatistiklerim</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <h3 class="mb-0">{{ stats.total_borrowed }}</h3>
+                            <small class="text-muted">Toplam Ödünç</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h3 class="mb-0 text-primary">{{ stats.current_borrowed }}</h3>
+                            <small class="text-muted">Aktif Ödünç</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="mb-0">{{ stats.total_reviews }}</h3>
+                            <small class="text-muted">Değerlendirme</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="mb-0">{{ stats.total_reservations }}</h3>
+                            <small class="text-muted">Rezervasyon</small>
+                        </div>
+                    </div>
+                    
+                    {% if stats.unpaid_fines > 0 %}
+                    <!-- Ceza ile ilgili alan kaldırıldı -->
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <!-- Sekmeler -->
+            <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab">
+                        <i class="bi bi-clock-history"></i> Son Aktiviteler
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="books-tab" data-bs-toggle="tab" data-bs-target="#books" type="button" role="tab">
+                        <i class="bi bi-book"></i> Kitaplarım
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                        <i class="bi bi-gear"></i> Ayarlar
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="profileTabsContent">
+                <!-- Aktiviteler -->
+                <div class="tab-pane fade show active" id="activity" role="tabpanel" aria-labelledby="activity-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">Son Aktivitelerim</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="activity-timeline">
+                                {% for activity in recent_activity %}
+                                <div class="activity-item d-flex mb-3">
+                                    <div class="activity-icon me-3">
+                                        <i class="bi bi-{{ 'box-arrow-in-right' if 'login' in activity.action else 
+                                                           'book' if 'book' in activity.action else 
+                                                           'arrow-left-right' if 'borrow' in activity.action or 'return' in activity.action else 
+                                                           'circle' }}" 
+                                           class="text-primary"></i>
+                                    </div>
+                                    <div class="activity-content flex-grow-1">
+                                        <p class="mb-1">{{ activity.action }}</p>
+                                        {% if activity.details %}
+                                        <small class="text-muted">{{ activity.details }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="activity-time">
+                                        <small class="text-muted">{{ activity.timestamp.strftime('%d.%m.%Y %H:%M') }}</small>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <p class="text-muted text-center">Henüz aktivite yok.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Kitaplarım -->
+                <div class="tab-pane fade" id="books" role="tabpanel" aria-labelledby="books-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Ödünç Aldığım Kitaplar</h5>
+                            <a href="{{ url_for('my_books') }}" class="btn btn-sm btn-primary">
+                                Tümünü Gör
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">Aktif ödünç alımlarınız ve geçmişiniz için "Kitaplarım" sayfasını ziyaret edin.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ayarlar -->
+                <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">Hesap Ayarları</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="settingsForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="theme" class="form-label">Tema</label>
+                                        <select class="form-control" id="theme" name="theme">
+                                            <option value="light" {% if current_user.theme == 'light' %}selected{% endif %}>Açık</option>
+                                            <option value="dark" {% if current_user.theme == 'dark' %}selected{% endif %}>Koyu</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="language" class="form-label">Dil</label>
+                                        <select class="form-control" id="language" name="language">
+                                            <option value="tr" {% if current_user.language == 'tr' %}selected{% endif %}>Türkçe</option>
+                                            <option value="en" {% if current_user.language == 'en' %}selected{% endif %}>English</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                {% if member %}
+                                <h6 class="mt-3 mb-3">İletişim Bilgileri</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="phone" class="form-label">Telefon</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone" value="{{ member.phone or '' }}">
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label for="address" class="form-label">Adres</label>
+                                        <textarea class="form-control" id="address" name="address" rows="2">{{ member.address or '' }}</textarea>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Ayarları Kaydet
+                                </button>
+                            </form>
+                            
+                            <hr class="my-4">
+                            
+                            <h6>Şifre Değiştir</h6>
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                <i class="bi bi-key"></i> Şifre Değiştir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Profil Düzenleme Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProfileModalLabel">Profili Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editProfileForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editEmail" class="form-label">E-posta</label>
+                        <input type="email" class="form-control" id="editEmail" name="email" value="{{ current_user.email }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Güncelle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Şifre Değiştirme Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changePasswordModalLabel">Şifre Değiştir</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="changePasswordForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="currentPassword" class="form-label">Mevcut Şifre</label>
+                        <input type="password" class="form-control" id="currentPassword" name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">Yeni Şifre</label>
+                        <input type="password" class="form-control" id="newPassword" name="new_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Yeni Şifre (Tekrar)</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Şifreyi Değiştir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.activity-timeline .activity-item:not(:last-child) {
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 1rem;
+}
+
+.activity-icon i {
+    font-size: 1.2rem;
+}
+</style>
+
+<script>
+// Ayarlar formu
+document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/profile/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('Bir hata oluştu');
+    }
+});
+
+// Profil düzenleme formu
+document.getElementById('editProfileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/profile/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('Bir hata oluştu');
+    }
+});
+
+// Şifre değiştirme formu (henüz backend'de endpoint yok)
+document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert('Yeni şifreler eşleşmiyor!');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        alert('Şifre en az 6 karakter olmalıdır!');
+        return;
+    }
+    
+    // TODO: Backend endpoint eklendiğinde aktif edilecek
+    alert('Şifre değiştirme özelliği yakında eklenecek!');
+});
+</script>
+{% endblock %}

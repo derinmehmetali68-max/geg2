@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - CAL Kütüphane</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        .offline-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .offline-content {
+            text-align: center;
+            max-width: 500px;
+            padding: 2rem;
+        }
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+        .retry-btn {
+            margin-top: 1.5rem;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-content">
+            <div class="offline-icon pulse">
+                📡
+            </div>
+            <h1>İnternet Bağlantısı Yok</h1>
+            <p class="lead">
+                Şu anda çevrimdışısınız. İnternet bağlantınızı kontrol edin ve tekrar deneyin.
+            </p>
+            <p>
+                Bazı özellikler offline modda da kullanılabilir:
+            </p>
+            <ul class="list-unstyled">
+                <li>✓ Daha önce ziyaret ettiğiniz sayfalar</li>
+                <li>✓ Kaydedilmiş kitap bilgileri</li>
+                <li>✓ Temel navigasyon</li>
+            </ul>
+            
+            <button class="btn btn-light btn-lg retry-btn" onclick="location.reload()">
+                🔄 Tekrar Dene
+            </button>
+            
+            <div class="mt-4">
+                <small>
+                    Bağlantı geri geldiğinde otomatik olarak yönlendirileceksiniz.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Online durumu kontrol et
+        window.addEventListener('online', function() {
+            // Ana sayfaya yönlendir
+            window.location.href = '/';
+        });
+        
+        // Sayfa yüklendiğinde bağlantı durumunu kontrol et
+        if (navigator.onLine) {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html> 

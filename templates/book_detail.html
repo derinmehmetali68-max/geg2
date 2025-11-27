@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - Kitap Detayı{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            {% if book.image_path %}
+                            {% set cover_src = book.image_path if book.image_path.startswith('http') or book.image_path.startswith('/static/') else ('/static/book_covers/' ~ book.image_path) %}
+                            <img id="bookCoverImg" src="{{ cover_src }}" class="img-fluid rounded shadow" alt="{{ book.title }}" style="max-width: 100%; height: auto;">
+                            <div id="coverInfo" class="mt-2 small text-muted">
+                                <i class="bi bi-image"></i> Kapak bilgileri yükleniyor...
+                            </div>
+                            {% else %}
+                            <div class="text-center p-5 bg-light rounded">
+                                <i class="bi bi-book" style="font-size: 5rem;"></i>
+                                <p class="mt-2">Kapak resmi yok</p>
+                                {% if current_user.is_authenticated and current_user.role in ['admin','librarian'] %}
+                                <div class="mt-2">
+                                    <form id="coverUploadForm" enctype="multipart/form-data">
+                                        <input type="file" class="form-control form-control-sm" name="cover" accept="image/*" required>
+                                        <button class="btn btn-sm btn-secondary mt-2" type="submit"><i class="bi bi-image"></i> Kapak Yükle</button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            {% if book.qr_code %}
+                            <div class="mt-3 text-center">
+                                <img src="/{{ book.qr_code }}" class="img-fluid" style="max-width: 200px;" alt="QR Code">
+                                <p class="small text-muted mt-1">QR Kod</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h2 class="mb-0">{{ book.title }}</h2>
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-info btn-sm" onclick="completeBookInfo('{{ book.isbn }}')" title="Eksik bilgileri ISBN'den tamamla">
+                                        <i class="bi bi-magic"></i> Bilgi Tamamla
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th width="30%">ISBN:</th>
+                                    <td>{{ book.isbn }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Yazar(lar):</th>
+                                    <td>{{ book.authors if book.authors and book.authors.lower() not in ['nan', 'n/a', 'null', 'none'] else '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Yayınevi:</th>
+                                    <td>{{ book.publishers if book.publishers and book.publishers.lower() not in ['nan', 'n/a', 'null', 'none'] else '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Yayın Tarihi:</th>
+                                    <td>{{ book.publish_date if book.publish_date and book.publish_date.lower() not in ['nan', 'n/a', 'null', 'none'] else '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Sayfa Sayısı:</th>
+                                    <td>{{ book.number_of_pages if book.number_of_pages and book.number_of_pages > 0 else '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Dil:</th>
+                                    <td>{{ book.languages if book.languages and book.languages.lower() not in ['nan', 'n/a', 'null', 'none'] else '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Kategoriler:</th>
+                                    <td>
+                                        {% for category in categories %}
+                                        <span class="badge bg-secondary me-1">{{ category }}</span>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Konum:</th>
+                                    <td>Raf: {{ book.shelf }} / Dolap: {{ book.cupboard }}</td>
+                                </tr>
+                            </table>
+                            
+                            {% if book.description %}
+                            <div class="mt-3">
+                                <h5>Açıklama</h5>
+                                <p>{{ book.description }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Değerlendirmeler -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Değerlendirmeler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4 text-center">
+                            <h1 class="display-4">{{ "%.1f"|format(book.average_rating) }}</h1>
+                            <div class="rating mb-2">
+                                {% for i in range(5) %}
+                                    {% if i < book.average_rating|int %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    {% elif i < book.average_rating %}
+                                    <i class="bi bi-star-half text-warning"></i>
+                                    {% else %}
+                                    <i class="bi bi-star text-warning"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <p class="text-muted">{{ book.review_count }} değerlendirme</p>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            {% if current_user.is_authenticated and not user_review %}
+                            <h6>Değerlendirme Yap</h6>
+                            <form id="reviewForm">
+                                <div class="mb-3">
+                                    <div id="starRating" class="star-rating">
+                                        {% for i in range(1, 6) %}
+                                        <i class="bi bi-star" data-rating="{{ i }}"></i>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <textarea class="form-control" id="reviewComment" rows="3" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Değerlendir</button>
+                            </form>
+                            {% elif user_review %}
+                            <div class="alert alert-info">
+                                <p class="mb-1">Değerlendirmeniz:</p>
+                                <div class="rating">
+                                    {% for i in range(5) %}
+                                        {% if i < user_review.rating %}
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                        <i class="bi bi-star text-warning"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% if user_review.comment %}
+                                <p class="mt-2 mb-0">{{ user_review.comment }}</p>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Yorumlar -->
+                    <div class="reviews-list">
+                        {% for review in reviews %}
+                        <div class="review-item mb-3 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ review.reviewer.username }}</strong>
+                                    <div class="rating small">
+                                        {% for i in range(5) %}
+                                            {% if i < review.rating %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            {% else %}
+                                            <i class="bi bi-star text-warning"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ review.created_at.strftime('%d.%m.%Y') }}</small>
+                            </div>
+                            {% if review.comment %}
+                            <p class="mt-2 mb-0">{{ review.comment }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Durum Kartı -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Durum</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Toplam Adet:</span>
+                            <strong>{{ book.quantity }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Ödünç Verilen:</span>
+                            <strong>{{ borrowed_count }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Mevcut:</span>
+                            <strong class="{% if available_count > 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ available_count }}
+                            </strong>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Toplam Ödünç Sayısı: {{ book.total_borrow_count }}</small><br>
+                        {% if book.last_borrowed_date %}
+                        <small class="text-muted">Son Ödünç: {{ book.last_borrowed_date }}</small>
+                        {% endif %}
+                    </div>
+                    
+                    {% if current_user.is_authenticated %}
+                        {% if can_borrow %}
+                        <button class="btn btn-success w-100" onclick="borrowBook()">
+                            <i class="bi bi-book-half"></i> Ödünç Al
+                        </button>
+                        {% elif available_count == 0 %}
+                        <button class="btn btn-warning w-100" onclick="reserveBook()">
+                            <i class="bi bi-bookmark-plus"></i> Rezervasyon Yap
+                        </button>
+                        {% else %}
+                        <button class="btn btn-secondary w-100" disabled>
+                            Ödünç Limitinize Ulaştınız
+                        </button>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-primary w-100">
+                        Ödünç almak için giriş yapın
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- İstatistikler -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">İstatistikler</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="borrowChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.star-rating i {
+    font-size: 1.5rem;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.star-rating i:hover,
+.star-rating i.active {
+    color: #ffc107;
+}
+
+.rating i {
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+// Kapak resmi meta bilgilerini göster
+document.addEventListener('DOMContentLoaded', function() {
+    const img = document.getElementById('bookCoverImg');
+    const info = document.getElementById('coverInfo');
+    if (!img || !info) return;
+
+    function updateInfo() {
+        try {
+            const width = img.naturalWidth || img.width;
+            const height = img.naturalHeight || img.height;
+            const src = img.getAttribute('src') || '';
+            const filename = (src.split('/').pop() || '').split('?')[0];
+            info.innerHTML = `<i class="bi bi-image"></i> ${filename} • ${width}x${height}px`;
+        } catch (e) {
+            info.textContent = 'Kapak bilgisi alınamadı';
+        }
+    }
+
+    if (img.complete) {
+        updateInfo();
+    } else {
+        img.addEventListener('load', updateInfo);
+        img.addEventListener('error', () => info.textContent = 'Kapak yüklenemedi');
+    }
+});
+
+// Yıldız derecelendirme
+document.querySelectorAll('#starRating i').forEach(star => {
+    star.addEventListener('click', function() {
+        const rating = this.dataset.rating;
+        document.querySelectorAll('#starRating i').forEach((s, index) => {
+            if (index < rating) {
+                s.classList.remove('bi-star');
+                s.classList.add('bi-star-fill', 'active');
+            } else {
+                s.classList.remove('bi-star-fill', 'active');
+                s.classList.add('bi-star');
+            }
+        });
+    });
+    
+    star.addEventListener('mouseenter', function() {
+        const rating = this.dataset.rating;
+        document.querySelectorAll('#starRating i').forEach((s, index) => {
+            if (index < rating) {
+                s.classList.remove('bi-star');
+                s.classList.add('bi-star-fill');
+            } else {
+                s.classList.remove('bi-star-fill');
+                s.classList.add('bi-star');
+            }
+        });
+    });
+});
+
+document.getElementById('starRating').addEventListener('mouseleave', function() {
+    document.querySelectorAll('#starRating i').forEach(s => {
+        if (!s.classList.contains('active')) {
+            s.classList.remove('bi-star-fill');
+            s.classList.add('bi-star');
+        }
+    });
+});
+
+// Değerlendirme formu
+document.getElementById('reviewForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const activeStars = document.querySelectorAll('#starRating i.active').length;
+    if (activeStars === 0) {
+        alert('Lütfen bir puan seçin');
+        return;
+    }
+    
+    const data = {
+        rating: activeStars,
+        comment: document.getElementById('reviewComment').value
+    };
+    
+    try {
+        const response = await fetch(`/api/books/{{ book.isbn }}/review`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('Bir hata oluştu');
+    }
+});
+
+// Ödünç alma
+async function borrowBook() {
+    if (confirm('Bu kitabı ödünç almak istediğinizden emin misiniz?')) {
+        // Burada ödünç alma modalı açılabilir
+        alert('Ödünç alma işlemi için yönetici ile görüşün');
+    }
+}
+
+// Rezervasyon
+async function reserveBook() {
+    if (confirm('Bu kitap için rezervasyon yapmak istiyor musunuz?')) {
+        try {
+            const response = await fetch(`/api/books/{{ book.isbn }}/reserve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            alert(result.message);
+            
+            if (result.success) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('Bir hata oluştu');
+        }
+    }
+}
+
+// Ödünç istatistikleri grafiği
+const ctx = document.getElementById('borrowChart').getContext('2d');
+new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Mevcut', 'Ödünç'],
+        datasets: [{
+            data: [{{ available_count }}, {{ borrowed_count }}],
+            backgroundColor: ['#28a745', '#dc3545']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Kapak yükleme (detay sayfası)
+document.getElementById('coverUploadForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    try {
+        const formData = new FormData(this);
+        const resp = await fetch('/api/books/{{ book.isbn }}/upload-cover', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        alert(data.message || (resp.ok ? 'Kapak yüklendi' : 'Yükleme hatası'));
+        if (resp.ok) location.reload();
+    } catch (err) {
+        alert('Yükleme hatası');
+    }
+});
+</script>
+{% endblock %}

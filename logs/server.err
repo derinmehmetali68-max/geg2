@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "C:\Users\mehmet\Documents\claude\kütüphane\main.py", line 9, in <module>
+    from PyQt5.QtWidgets import (
+ModuleNotFoundError: No module named 'PyQt5'

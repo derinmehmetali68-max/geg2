@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Rezervasyonlarım{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-bookmark-plus"></i> Rezervasyonlarım
+            </h2>
+            
+            <!-- Aktif Rezervasyonlar -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-hourglass-split"></i> Aktif Rezervasyonlar
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% set active_reservations = reservations|selectattr("0.status", "equalto", "active")|list %}
+                    {% if active_reservations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Kitap</th>
+                                    <th>Yazar</th>
+                                    <th>Rezervasyon Tarihi</th>
+                                    <th>Sıra</th>
+                                    <th>Tahmini Bekleme</th>
+                                    <th>Son Geçerlilik</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reservation, book in active_reservations %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('book_detail', isbn=book.isbn) }}" class="text-decoration-none">
+                                            {{ book.title }}
+                                        </a>
+                                    </td>
+                                    <td>{{ book.authors }}</td>
+                                    <td>{{ reservation.reservation_date.strftime('%d.%m.%Y %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if reservation.queue_position == 1 else 'primary' }}">
+                                            {{ reservation.queue_position }}. sırada
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if reservation.queue_position == 1 %}
+                                        <span class="text-success">Sıra sizde!</span>
+                                        {% else %}
+                                        ~{{ reservation.queue_position * 7 }}-{{ reservation.queue_position * 14 }} gün
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if reservation.expiry_date %}
+                                        {{ reservation.expiry_date.strftime('%d.%m.%Y') }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="cancelReservation({{ reservation.id }})">
+                                            <i class="bi bi-x-circle"></i> İptal Et
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Bilgi:</strong> Sıranız geldiğinde size e-posta ile bildirim gönderilecektir. 
+                        Bildirimi aldıktan sonra 3 gün içinde kitabı teslim almanız gerekmektedir.
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-bookmark" style="font-size: 3rem;"></i><br>
+                        Aktif rezervasyonunuz bulunmuyor.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Geçmiş Rezervasyonlar -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Rezervasyon Geçmişi
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% set past_reservations = reservations|rejectattr("0.status", "equalto", "active")|list %}
+                    {% if past_reservations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Kitap</th>
+                                    <th>Yazar</th>
+                                    <th>Rezervasyon Tarihi</th>
+                                    <th>Durum</th>
+                                    <th>Son İşlem Tarihi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reservation, book in past_reservations %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('book_detail', isbn=book.isbn) }}" class="text-decoration-none">
+                                            {{ book.title }}
+                                        </a>
+                                    </td>
+                                    <td>{{ book.authors }}</td>
+                                    <td>{{ reservation.reservation_date.strftime('%d.%m.%Y') }}</td>
+                                    <td>
+                                        {% if reservation.status == 'fulfilled' %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Tamamlandı
+                                        </span>
+                                        {% elif reservation.status == 'cancelled' %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-x-circle"></i> İptal Edildi
+                                        </span>
+                                        {% elif reservation.status == 'expired' %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-clock"></i> Süresi Doldu
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if reservation.expiry_date %}
+                                        {{ reservation.expiry_date.strftime('%d.%m.%Y') }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        Geçmiş rezervasyonunuz bulunmuyor.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- İstatistikler -->
+            <div class="row mt-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ reservations|selectattr("0.status", "equalto", "active")|list|length }}</h3>
+                            <p class="mb-0">Aktif Rezervasyon</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ reservations|selectattr("0.status", "equalto", "fulfilled")|list|length }}</h3>
+                            <p class="mb-0">Tamamlanan</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-secondary text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ reservations|selectattr("0.status", "equalto", "cancelled")|list|length }}</h3>
+                            <p class="mb-0">İptal Edilen</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ reservations|selectattr("0.status", "equalto", "expired")|list|length }}</h3>
+                            <p class="mb-0">Süresi Dolan</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Rezervasyon iptal etme
+async function cancelReservation(reservationId) {
+    if (confirm('Bu rezervasyonu iptal etmek istediğinizden emin misiniz?')) {
+        try {
+            const response = await fetch(`/api/reservations/${reservationId}/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('Rezervasyon iptal edildi');
+                location.reload();
+            } else {
+                alert(result.message || 'Bir hata oluştu');
+            }
+        } catch (error) {
+            alert('Bir hata oluştu');
+            console.error(error);
+        }
+    }
+}
+</script>
+{% endblock %}

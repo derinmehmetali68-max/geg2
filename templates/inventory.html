@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}Envanter - Kütüphane Yönetim Sistemi{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2><i class="bi bi-archive"></i> Envanter & İstatistikler</h2>
+    <ul class="nav nav-tabs mb-3" id="inventoryTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="books-tab" data-bs-toggle="tab" data-bs-target="#books" type="button" role="tab">Kitap İstatistikleri</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="members-tab" data-bs-toggle="tab" data-bs-target="#members" type="button" role="tab">Üye İstatistikleri</button>
+        </li>
+    </ul>
+    <div class="tab-content" id="inventoryTabsContent">
+        <div class="tab-pane fade show active" id="books" role="tabpanel">
+            <div class="d-flex justify-content-end mb-3">
+                <!-- Removed Excel export button -->
+            </div>
+            <div id="inventorySummary" class="row g-4 mb-4"></div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">Kategoriye Göre Kitap Dağılımı</div>
+                        <div class="card-body">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card mb-4">
+                        <div class="card-header">En Çok Ödünç Alınan Kitaplar</div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead><tr><th>Kitap</th><th>Adet</th></tr></thead>
+                                <tbody id="popularBooksBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">En Çok Ödünç Alan Üyeler</div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead><tr><th>Üye</th><th>Adet</th></tr></thead>
+                                <tbody id="activeMembersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="members" role="tabpanel">
+            <div class="d-flex justify-content-end mb-3">
+                <!-- Removed Excel export button -->
+            </div>
+            <div id="memberStatsSummary" class="row g-4 mb-4"></div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">En Çok Ödünç Alan Üyeler</div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead><tr><th>Üye</th><th>Adet</th></tr></thead>
+                                <tbody id="mostActiveMembersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card mb-4">
+                        <div class="card-header">Cezalı Üyeler</div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead><tr><th>Üye</th><th>Ceza Bitiş</th></tr></thead>
+                                <tbody id="penalizedMembersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">En Çok Gecikme Yapan Üyeler</div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead><tr><th>Üye</th><th>Gecikme Sayısı</th></tr></thead>
+                                <tbody id="mostOverdueMembersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(function() {
+    // Kitap istatistikleri
+    $.get('/api/inventory/summary', function(data) {
+        const summary = data.summary;
+        $('#inventorySummary').html(`
+            <div class="col-md-3">
+                <div class="card text-white bg-primary"><div class="card-body text-center">
+                    <div class="h4">${summary.total_books}</div><small>Toplam Kitap</small>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success"><div class="card-body text-center">
+                    <div class="h4">${summary.distinct_books}</div><small>Farklı Kitap</small>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning"><div class="card-body text-center">
+                    <div class="h4">${summary.borrowed_books}</div><small>Ödünçte</small>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info"><div class="card-body text-center">
+                    <div class="h4">${summary.available_books}</div><small>Mevcut</small>
+                </div></div>
+            </div>
+        `);
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.category_labels,
+                datasets: [{ data: data.category_counts, backgroundColor: [
+                    '#007bff','#28a745','#ffc107','#dc3545','#17a2b8','#6f42c1','#fd7e14','#20c997','#e83e8c','#343a40'
+                ] }]
+            },
+            options: {responsive:true,plugins:{legend:{position:'bottom'}}}
+        });
+        $('#popularBooksBody').html(data.popular_books.map(b=>`<tr><td>${b.title}</td><td>${b.borrow_count}</td></tr>`).join(''));
+        $('#activeMembersBody').html(data.active_members.map(m=>`<tr><td>${m.name}</td><td>${m.borrow_count}</td></tr>`).join(''));
+    });
+    // Üye istatistikleri
+    $.get('/api/inventory/member-stats', function(data) {
+        const s = data.summary;
+        $('#memberStatsSummary').html(`
+            <div class="col-md-3">
+                <div class="card text-white bg-primary"><div class="card-body text-center">
+                    <div class="h4">${s.total_members}</div><small>Toplam Üye</small>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success"><div class="card-body text-center">
+                    <div class="h4">${s.active_members}</div><small>Aktif Üye</small>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-danger"><div class="card-body text-center">
+                    <div class="h4">${s.penalized_members}</div><small>Cezalı Üye</small>
+                </div></div>
+            </div>
+        `);
+        $('#mostActiveMembersBody').html(data.most_active.map(m=>`<tr><td>${m.name}</td><td>${m.borrow_count}</td></tr>`).join(''));
+        $('#penalizedMembersBody').html(data.penalized.map(m=>`<tr><td>${m.name}</td><td>${m.penalty_until ? m.penalty_until.split('T')[0] : ''}</td></tr>`).join(''));
+        $('#mostOverdueMembersBody').html(data.most_overdue.map(m=>`<tr><td>${m.name}</td><td>${m.overdue_count}</td></tr>`).join(''));
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}İşlemler - Kütüphane Yönetim Sistemi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Başlık ve Butonlar -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-arrow-left-right"></i> Ödünç İşlemleri</h2>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="showBorrowModal()">
+                        <i class="bi bi-book-half"></i> Ödünç Ver
+                    </button>
+                    <button class="btn btn-primary" onclick="showReturnModal()">
+                        <i class="bi bi-arrow-return-left"></i> İade Al
+                    </button>
+                    <button class="btn btn-danger" onclick="showOverdueBooks()">
+                        <i class="bi bi-exclamation-triangle"></i> Geciken Kitaplar
+                    </button>
+                    <button class="btn btn-warning" onclick="exportTransactions()">
+                        <i class="bi bi-download"></i> Excel İndir
+                    </button>
+                    <button class="btn btn-danger" onclick="exportTransactionsPDF()">
+                        <i class="bi bi-file-earmark-pdf"></i> PDF İndir
+                    </button>
+                </div>
+            </div>
+            
+            <!-- İstatistik Kartları -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body text-center">
+                            <i class="bi bi-book h3"></i>
+                            <div class="h4" id="activeLoans">0</div>
+                            <small>Aktif Ödünç</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body text-center">
+                            <i class="bi bi-check-circle h3"></i>
+                            <div class="h4" id="todayTransactions">0</div>
+                            <small>Bugünkü İşlem</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body text-center">
+                            <i class="bi bi-clock h3"></i>
+                            <div class="h4" id="dueTodayCount">0</div>
+                            <small>Bugün Teslim</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body text-center">
+                            <i class="bi bi-exclamation-circle h3"></i>
+                            <div class="h4" id="overdueCount">0</div>
+                            <small>Gecikmiş</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filtreler -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="transactionSearch" 
+                                       placeholder="Kitap adı, üye adı veya numara ara...">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="statusFilter" id="filterAll" value="all" checked>
+                                <label class="btn btn-outline-primary" for="filterAll">Tümü</label>
+                                
+                                <input type="radio" class="btn-check" name="statusFilter" id="filterActive" value="active">
+                                <label class="btn btn-outline-warning" for="filterActive">Ödünçte</label>
+                                
+                                <input type="radio" class="btn-check" name="statusFilter" id="filterReturned" value="returned">
+                                <label class="btn btn-outline-success" for="filterReturned">İade Edilmiş</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- İşlem Listesi -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Kitap</th>
+                                    <th>Üye</th>
+                                    <th>Veriliş Tarihi</th>
+                                    <th>Son Teslim</th>
+                                    <th>İade Tarihi</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Yükleniyor...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Sayfalama -->
+                    <div id="transactionsPagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ödünç Verme Modal -->
+<div class="modal fade" id="borrowModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kitap Ödünç Ver</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="borrowForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="borrowISBN" class="form-label">ISBN *</label>
+                        <input type="text" class="form-control" id="borrowISBN" required>
+                        <div id="bookAvailability" class="form-text mt-2"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="borrowMemberNo" class="form-label">Okul Numarası *</label>
+                        <input type="text" class="form-control" id="borrowMemberNo" required>
+                        <div id="memberInfo" class="form-text mt-2"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="borrowDueDate" class="form-label">Son Teslim Tarihi *</label>
+                        <input type="date" class="form-control" id="borrowDueDate" required>
+                        <div class="form-text">Varsayılan: 14 gün</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-book-half"></i> Ödünç Ver
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- İade Alma Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kitap İade Al</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="returnForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="returnISBN" class="form-label">ISBN *</label>
+                        <input type="text" class="form-control" id="returnISBN" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="returnMemberNo" class="form-label">Okul Numarası *</label>
+                        <input type="text" class="form-control" id="returnMemberNo" required>
+                    </div>
+                    <button type="button" class="btn btn-info mb-3" onclick="checkTransaction()">
+                        <i class="bi bi-search"></i> İşlemi Kontrol Et
+                    </button>
+                    <div id="transactionInfo"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-arrow-return-left"></i> İade Al
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Geciken Kitaplar Modal -->
+<div class="modal fade" id="overdueModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Geciken Kitaplar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Kitap</th>
+                                <th>Üye</th>
+                                <th>Son Teslim</th>
+                                <th>Gecikme (Gün)</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overdueTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="spinner-border spinner-border-sm"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sayfa yüklendiğinde - OPTİMİZE EDİLMİŞ
+$(document).ready(function() {
+    console.log('⚡ İşlemler sayfası yükleniyor...');
+    
+    // İşlemleri ve istatistikleri yükle
+    setTimeout(function() {
+        if (typeof loadTransactions === 'function') {
+            loadTransactions(1);
+        }
+        loadTransactionStats();
+    }, 100);
+    
+    // Varsayılan teslim tarihi (14 gün)
+    const today = new Date();
+    const dueDate = new Date(today.getTime() + (14 * 24 * 60 * 60 * 1000));
+    $('#borrowDueDate').val(dueDate.toISOString().split('T')[0]);
+    
+    // Event listener'lar
+    $('input[name="statusFilter"]').on('change', function() {
+        const filter = $(this).val();
+        if (typeof filterTransactions === 'function') {
+            filterTransactions(filter);
+        }
+    });
+    
+    // Real-time validation
+    $('#borrowISBN').on('input', debounce(checkBookAvailability, 500));
+    $('#borrowMemberNo').on('input', debounce(checkMemberInfo, 500));
+    
+    console.log('✅ İşlemler sayfası hazır');
+});
+
+// Modal fonksiyonları
+function showBorrowModal() {
+    $('#borrowModal').modal('show');
+}
+
+function showReturnModal() {
+    $('#returnModal').modal('show');
+}
+
+// İstatistikleri yükle
+function loadTransactionStats() {
+    $.ajax({
+        url: '/api/transactions/stats',
+        timeout: 2000,
+        showLoading: false,
+        success: function(data) {
+            $('#activeLoans').text(data.active || 0);
+            $('#todayTransactions').text(data.today_transactions || 0);
+            $('#dueTodayCount').text(data.today_due || 0);
+            $('#overdueCount').text(data.overdue || 0);
+        },
+        error: function() {
+            console.warn('İstatistikler yüklenemedi');
+        }
+    });
+}
+
+// Kitap müsaitliğini kontrol et
+function checkBookAvailability() {
+    const isbn = $('#borrowISBN').val().trim();
+    if (isbn.length < 10) return;
+    
+    $.ajax({
+        url: `/api/books/${isbn}/availability`,
+        timeout: 2000,
+        showLoading: false,
+        success: function(data) {
+            const statusHtml = data.available ? 
+                `<span class="text-success"><i class="bi bi-check-circle"></i> "${data.title}" mevcut (${data.available_count}/${data.total_count})</span>` :
+                `<span class="text-danger"><i class="bi bi-x-circle"></i> "${data.title}" mevcut değil</span>`;
+            $('#bookAvailability').html(statusHtml);
+        },
+        error: function() {
+            $('#bookAvailability').html('<span class="text-danger">Kitap bulunamadı</span>');
+        }
+    });
+}
+
+// Üye bilgilerini kontrol et
+function checkMemberInfo() {
+    const schoolNo = $('#borrowMemberNo').val().trim();
+    if (schoolNo.length < 3) return;
+    
+    $.ajax({
+        url: `/api/members/by-school-no/${schoolNo}`,
+        timeout: 2000,
+        showLoading: false,
+        success: function(data) {
+            const statusHtml = `<span class="text-success"><i class="bi bi-person-check"></i> ${data.ad_soyad} (${data.sinif || '-'}) - Aktif kitap: ${data.current_borrowed}</span>`;
+            $('#memberInfo').html(statusHtml);
+        },
+        error: function() {
+            $('#memberInfo').html('<span class="text-danger">Üye bulunamadı</span>');
+        }
+    });
+}
+
+// İşlemi kontrol et
+function checkTransaction() {
+    const isbn = $('#returnISBN').val().trim();
+    const schoolNo = $('#returnMemberNo').val().trim();
+    
+    if (!isbn || !schoolNo) {
+        showToast('ISBN ve okul numarası gerekli', 'warning');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/transactions/check',
+        data: { isbn: isbn, school_no: schoolNo },
+        timeout: 2000,
+        success: function(data) {
+            const trans = data.transaction;
+            const overdueInfo = trans.days_overdue > 0 ? 
+                `<span class="text-danger">Gecikme: ${trans.days_overdue} gün</span>` : 
+                '<span class="text-success">Zamanında</span>';
+            
+            $('#transactionInfo').html(`
+                <div class="alert alert-info">
+                    <h6>İşlem Bulundu</h6>
+                    <p><strong>Ödünç Tarihi:</strong> ${formatDate(trans.borrow_date)}</p>
+                    <p><strong>Son Teslim:</strong> ${formatDate(trans.due_date)}</p>
+                    <p><strong>Durum:</strong> ${overdueInfo}</p>
+                </div>
+            `);
+        },
+        error: function() {
+            $('#transactionInfo').html('<div class="alert alert-danger">İşlem bulunamadı</div>');
+        }
+    });
+}
+
+// Geciken kitapları göster
+function showOverdueBooks() {
+    $('#overdueModal').modal('show');
+    
+    $.ajax({
+        url: '/api/transactions/overdue',
+        timeout: 3000,
+        success: function(data) {
+            const tbody = $('#overdueTableBody');
+            tbody.empty();
+            
+            if (!data.overdue || data.overdue.length === 0) {
+                tbody.append('<tr><td colspan="5" class="text-center text-muted">Geciken kitap yok</td></tr>');
+                return;
+            }
+            
+            data.overdue.forEach(item => {
+                tbody.append(`
+                    <tr>
+                        <td>
+                            <strong>${item.book_title}</strong><br>
+                            <small class="text-muted"><code>${item.isbn}</code></small>
+                        </td>
+                        <td>${item.member_name}</td>
+                        <td>${formatDate(item.due_date)}</td>
+                        <td><span class="badge bg-danger">${item.days_overdue}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="quickReturn(${item.id})">
+                                Hızlı İade
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        },
+        error: function() {
+            $('#overdueTableBody').html('<tr><td colspan="5" class="text-center text-danger">Yükleme hatası</td></tr>');
+        }
+    });
+}
+
+// Export işlemleri
+function exportTransactions() {
+    const link = document.createElement('a');
+    link.href = '/api/export/transactions';
+    link.download = `islemler_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.click();
+    showToast('Excel dosyası indiriliyor...', 'success');
+}
+
+// PDF İndir
+function exportTransactionsPDF() {
+    showToast('PDF oluşturuluyor...', 'info');
+    fetch('/api/transactions/list-pdf')
+        .then(async (response) => {
+            if (!response.ok) {
+                let message = 'PDF indirilemedi';
+                try { message = (await response.json()).error || message; } catch (_) {}
+                throw new Error(message);
+            }
+            const ct = (response.headers.get('Content-Type') || '').toLowerCase();
+            if (!ct.includes('application/pdf')) {
+                let message = 'PDF oluşturulamadı';
+                try { message = (await response.json()).error || message; } catch (_) {}
+                throw new Error(message);
+            }
+            const blob = await response.blob();
+            const cd = response.headers.get('Content-Disposition') || '';
+            const match = cd.match(/filename="?([^";]+)"?/i);
+            const filename = match ? match[1] : `islemler_listesi_${new Date().toISOString().slice(0,16).replace(/[-:T]/g,'')}.pdf`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            a.remove();
+            showToast('PDF dosyası indirildi!', 'success');
+        })
+        .catch((err) => {
+            console.error('Transactions PDF Error:', err);
+            showToast(err.message || 'PDF oluşturulurken hata oluştu', 'error');
+        });
+}
+// Global erişim
+window.exportTransactionsPDF = exportTransactionsPDF;
+</script>
+{% endblock %}

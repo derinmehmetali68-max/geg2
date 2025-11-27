@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Üye Detayları</h2>
+    <table class="table table-bordered w-auto">
+        <tr><th>Ad Soyad</th><td>{{ member.ad_soyad }}</td></tr>
+        <tr><th>Numara</th><td>{{ member.numara }}</td></tr>
+        <tr><th>Email</th><td>{{ member.email }}</td></tr>
+        <tr><th>Üye Türü</th><td>{{ member.uye_turu }}</td></tr>
+        <tr><th>Telefon</th><td>{{ member.phone }}</td></tr>
+        <tr><th>Adres</th><td>{{ member.address }}</td></tr>
+        <tr><th>Katılım Tarihi</th><td>{{ member.join_date.strftime('%d.%m.%Y') if member.join_date else '' }}</td></tr>
+        <tr><th>Toplam Ödünç</th><td>{{ member.total_borrowed }}</td></tr>
+        <tr><th>Aktif Ödünç</th><td>{{ member.current_borrowed }}</td></tr>
+        <tr><th>Güvenilirlik</th><td>{{ member.reliability_score }}</td></tr>
+    </table>
+    <a href="{{ url_for('members') }}" class="btn btn-secondary">Geri Dön</a>
+</div>
+{% endblock %} 

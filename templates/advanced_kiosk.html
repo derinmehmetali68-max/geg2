@@ -1,0 +1,1265 @@
+{% extends 'base.html' %}
+{% block title %}CAL Kütüphane Kiosk{% endblock %}
+{% block content %}
+<script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+<!-- Kiosk Ana Container -->
+<div class="kiosk-container">
+    <!-- Header -->
+    <header class="kiosk-header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1 class="kiosk-title">
+                    <i class="bi bi-book"></i>
+                    CAL Kütüphane Kiosk
+            </h1>
+                <p class="kiosk-subtitle">Kitap Arama ve Talep Sistemi</p>
+            </div>
+            <div class="header-right">
+                <!-- Profil Menüsü -->
+                <div id="profileMenu" class="profile-menu d-none">
+                    <div class="dropdown">
+                        <button class="btn btn-primary dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            <span id="userName">Kullanıcı</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">Kullanıcı Bilgileri</h6></li>
+                            <li><a class="dropdown-item" href="#" id="profileInfo">
+                                <i class="bi bi-person"></i> Profil
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" id="myBooks">
+                                <i class="bi bi-book"></i> Kitaplarım
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" id="myRequests">
+                                <i class="bi bi-clock"></i> Taleplerim
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" id="logoutBtn">
+                                <i class="bi bi-box-arrow-right"></i> Çıkış
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Ana İçerik -->
+    <main class="kiosk-main">
+        <!-- Giriş Paneli -->
+        <div id="loginPanel" class="login-panel">
+            <div class="login-card">
+                <div class="login-header">
+                    <i class="bi bi-person-circle"></i>
+                    <h2>Kiosk Girişi</h2>
+                    <p>Kitap aramak için okul numaranızı girin</p>
+                </div>
+                <form id="manualLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="schoolNumber">Okul Numarası</label>
+                        <input type="text" class="form-control" id="schoolNumber" 
+                               placeholder="Okul numaranızı girin" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="firstName">Ad Soyad (İsteğe bağlı)</label>
+                        <input type="text" class="form-control" id="firstName" 
+                               placeholder="Adınız ve soyadınız">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-search"></i> Kitap Ara
+                    </button>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-outline-secondary" id="scanMemberBtn">
+                            <i class="bi bi-qr-code-scan"></i> QR ile Giriş
+                        </button>
+                    </div>
+                </form>
+                <!-- Üye QR Tarayıcı Bölümü -->
+                <div class="qr-scanner-container mt-3" id="memberQRContainer">
+                    <div id="qr-reader"></div>
+                </div>
+        </div>
+    </div>
+
+        <!-- Ana İşlem Paneli -->
+        <div id="actionTabs" class="action-panel d-none">
+                    <!-- Durum Göstergesi -->
+            <div id="statusPanel" class="status-panel">
+                <div id="statusIcon" class="status-icon">🔍</div>
+                        <h3 id="statusTitle">Hoş Geldiniz!</h3>
+                <p id="statusMessage">Kitap kataloğu yükleniyor...</p>
+                <div id="progressBar" class="progress d-none">
+                    <div class="progress-bar"></div>
+                        </div>
+                <div class="mt-2">
+                    <button class="btn btn-outline-light btn-sm" id="toggleScanner">
+                        <i class="bi bi-camera"></i> Tarayıcıyı Başlat
+                    </button>
+                </div>
+            </div>
+
+            <!-- Üye Bilgi Kartı (JS doldurur) -->
+            <div id="memberInfoCard" class="mb-3"></div>
+
+            <!-- Sekme Menüsü -->
+            <div class="tab-navigation">
+                <button class="tab-btn active" id="books-tab" data-target="books-panel">
+                                    <i class="bi bi-book"></i> Kitap Katalogu
+                                </button>
+                <button class="tab-btn" id="transactions-tab" data-target="transactions-panel">
+                                    <i class="bi bi-arrow-left-right"></i> İşlemlerim
+                                </button>
+                <button class="tab-btn" id="requests-tab" data-target="requests-panel">
+                                    <i class="bi bi-clock-history"></i> Taleplerim
+                                </button>
+                <button class="tab-btn" id="profile-tab" data-target="profile-panel">
+                                    <i class="bi bi-person"></i> Profilim
+                                </button>
+                <button class="tab-btn" id="shelf-map-tab" data-target="shelf-map-panel">
+                                    <i class="bi bi-map"></i> Raf Haritası
+                                </button>
+            </div>
+
+            <!-- Sekme İçerikleri -->
+            <div class="tab-content">
+                <!-- Kitap Katalogu -->
+                <div id="books-panel" class="tab-pane active">
+                    <!-- Arama Bölümü -->
+                    <div class="search-section">
+                        <div class="search-box">
+                                            <input type="text" class="form-control" id="bookSearchInput" 
+                                                   placeholder="Kitap adı, yazar, ISBN veya kategori...">
+                            <button class="btn btn-primary" id="searchBooks">
+                                <i class="bi bi-search"></i> Ara
+                            </button>
+                             <button class="btn btn-outline-secondary" id="voiceSearch" title="Sesle Ara">
+                                 <i class="bi bi-mic"></i>
+                             </button>
+                                        </div>
+                        
+                        <!-- Görünüm Seçenekleri -->
+                        <div class="view-options">
+                                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="viewMode" id="gridView">
+                                                <label class="btn btn-outline-primary" for="gridView">
+                                                    <i class="bi bi-grid-3x3-gap"></i> Kart
+                                                </label>
+                                                
+                                <input type="radio" class="btn-check" name="viewMode" id="listView" checked>
+                                                <label class="btn btn-outline-primary" for="listView">
+                                                    <i class="bi bi-list-ul"></i> Liste
+                                                </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Kitap İçeriği -->
+                                <div id="booksContainer">
+                                    <!-- Liste Görünümü -->
+                        <div id="listViewContainer" class="view-container">
+                            <div class="book-list-header">
+                                <h4><i class="bi bi-list-ul"></i> Kitap Listesi 
+                                    <span class="badge bg-secondary" id="bookListTotal">0</span>
+                                </h4>
+                                <div class="list-actions">
+                                                        <button class="btn btn-outline-success btn-sm" onclick="exportBookList()">
+                                                            <i class="bi bi-download"></i> Excel
+                                                        </button>
+                                                        <button class="btn btn-outline-primary btn-sm" onclick="refreshBookList()">
+                                                            <i class="bi bi-arrow-clockwise"></i> Yenile
+                                                        </button>
+                                                    </div>
+                                                </div>
+                            
+                            <div class="book-table-container">
+                                <table class="book-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 80px;">Kapak</th>
+                                                                <th>Kitap Bilgileri</th>
+                                            <th style="width: 130px;">ISBN</th>
+                                            <th style="width: 120px;">Konum</th>
+                                            <th style="width: 120px;">Durum</th>
+                                            <th style="width: 140px;">İşlemler</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="bookListTableBody">
+                                                            <tr>
+                                                                <td colspan="6" class="text-center py-4">
+                                                <div class="spinner-border text-primary"></div>
+                                                                    <p class="text-muted mt-2">Kitap listesi yükleniyor...</p>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                            
+                            <div class="book-list-footer">
+                                                    <small class="text-muted" id="bookListInfo">Toplam: 0 kitap</small>
+                                                    <nav>
+                                    <ul class="pagination pagination-sm mb-0" id="bookListPagination"></ul>
+                                                    </nav>
+                                        </div>
+                                    </div>
+                                    
+                        <!-- Kart Görünümü -->
+                        <div id="gridViewContainer" class="view-container d-none">
+                            <div class="book-grid" id="booksGrid">
+                                <!-- Kitaplar buraya yüklenecek -->
+                            </div>
+                            <div class="text-center mt-4">
+                                <button class="btn btn-outline-primary" id="loadMoreBooks" style="display: none;">
+                                    <i class="bi bi-plus-circle"></i> Daha Fazla Göster
+                                                    </button>
+                            </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                <!-- İşlemlerim -->
+                <div id="transactions-panel" class="tab-pane">
+                    <div class="panel-content">
+                        <h4><i class="bi bi-arrow-left-right"></i> Ödünç Alma ve İade İşlemleri</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="transaction-card">
+                                    <h5><i class="bi bi-plus-circle text-primary"></i> Ödünç Alma Talebi</h5>
+                                    <p class="text-muted">Kitap QR kodu tarayarak ödünç alma talebi oluştur.</p>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" id="borrowISBN" placeholder="ISBN veya kitap QR kodu tarayın">
+                                    </div>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-primary" id="requestBorrow"><i class="bi bi-send"></i> Talep Oluştur</button>
+                                        <button class="btn btn-outline-primary" id="scanBorrowQR"><i class="bi bi-qr-code-scan"></i> QR Tara</button>
+                                    </div>
+                                    <small class="text-muted mt-2 d-block"><i class="bi bi-info-circle"></i> Admin onayından sonra ödünç alabilirsiniz.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="transaction-card">
+                                    <h5><i class="bi bi-arrow-return-left text-success"></i> İade İşlemi</h5>
+                                    <p class="text-muted">Elinizdeki kitabı iade etmek için QR tarayın.</p>
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" id="returnISBN" placeholder="İade edilecek kitap QR kodu">
+                                    </div>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-success" id="processReturn"><i class="bi bi-check-circle"></i> İade Et</button>
+                                        <button class="btn btn-outline-success" id="scanReturnQR"><i class="bi bi-qr-code-scan"></i> QR Tara</button>
+                                    </div>
+                                    <small class="text-muted mt-2 d-block"><i class="bi bi-shield-check"></i> İade işlemi anında gerçekleşir.</small>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="qr-scanner-container" id="qrScannerCard" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="bi bi-camera"></i> QR Kod Tarayıcı</h5>
+                                <button class="btn btn-sm btn-outline-secondary" id="closeQRScanner"><i class="bi bi-x"></i> Kapat</button>
+                            </div>
+                            <div id="transactionQRReader"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Taleplerim -->
+                <div id="requests-panel" class="tab-pane">
+                    <div class="panel-content">
+                        <h4><i class="bi bi-clock-history"></i> Taleplerim</h4>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="requests-list">
+                                    <h5 class="requests-title"><i class="bi bi-hourglass-split"></i> Bekleyen Taleplerim</h5>
+                                    <div id="user-requests-container">
+                                        <p class="text-muted">Talepler yükleniyor...</p>
+                                    </div>
+                                    <div id="pendingRequests">
+                                        <div class="text-center text-muted py-4">
+                                            <i class="bi bi-hourglass-split display-4"></i>
+                                            <p class="mt-2">Bekleyen talebiniz yok</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="requests-info">
+                                    <h6><i class="bi bi-info-circle text-info"></i> Talep Süreci</h6>
+                                    <ol class="small mb-0">
+                                        <li>Kitap QR kodu tarayın</li>
+                                        <li>Ödünç alma talebi oluşturun</li>
+                                        <li>Admin onayını bekleyin</li>
+                                        <li>Onaylandıktan sonra kitabı alın</li>
+                                    </ol>
+                                </div>
+                                 <div class="requests-list mt-3">
+                                    <h6 class="requests-title"><i class="bi bi-check-circle"></i> Tamamlanan Talepler</h6>
+                                     <div id="completedRequests">
+                                        <!-- Tamamlanan talepler -->
+                                     </div>
+                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                            
+                <!-- Profilim -->
+                <div id="profile-panel" class="tab-pane">
+                    <div class="panel-content">
+                        <h4><i class="bi bi-person"></i> Profilim</h4>
+                        <div id="memberProfile" class="row">
+                            <!-- Üye profil bilgileri buraya yüklenecek -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Raf Haritası -->
+                <div id="shelf-map-panel" class="tab-pane">
+                    <div class="panel-content">
+                        <h4><i class="bi bi-map"></i> Raf/Dolap Haritası</h4>
+                        <div id="kioskShelfMapContainer">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="text-muted mt-2">Raf haritası yükleniyor...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- CSS Stilleri -->
+<style>
+/* Kiosk Ana Container */
+.kiosk-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.kiosk-header {
+    background: linear-gradient(180deg, rgba(13,27,42,0.9) 0%, rgba(27,38,59,0.9) 100%);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    padding: 1rem 0;
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kiosk-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.kiosk-subtitle {
+    color: #e2e8f0;
+    margin: 0.25rem 0 0 0;
+    font-size: 1rem;
+}
+
+.profile-menu .btn {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+}
+
+/* Ana İçerik */
+.kiosk-main {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    color: #e2e8f0;
+}
+
+/* Giriş Paneli */
+.login-panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+}
+
+.login-card {
+    background: rgba(15,23,42,0.85);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    padding: 3rem;
+    width: 100%;
+    max-width: 500px;
+    border: 1px solid rgba(226,232,240,0.12);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-header i {
+    font-size: 4rem;
+    color: #1e3a8a;
+    margin-bottom: 1rem;
+}
+
+.login-header h2 {
+    color: #e2e8f0;
+    margin-bottom: 0.5rem;
+}
+
+.login-header p {
+    color: #e2e8f0;
+    margin: 0;
+}
+
+.login-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.login-form label {
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 0.5rem;
+}
+
+.login-form .form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.login-form .form-control:focus {
+    border-color: #1e3a8a;
+    box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.25);
+}
+
+/* Ana İşlem Paneli */
+.action-panel {
+    background: linear-gradient(180deg, rgba(13,27,42,0.6) 0%, rgba(27,38,59,0.6) 100%);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    padding: 2rem;
+    border: 1px solid rgba(226,232,240,0.15);
+}
+
+/* Durum Paneli */
+.status-panel {
+    text-align: center;
+    padding: 2rem;
+    background: linear-gradient(45deg, #0d1b2a, #1b263b);
+    color: #e2e8f0;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.status-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.status-panel h3 {
+    color: #e2e8f0;
+    margin-bottom: 0.5rem;
+}
+
+.status-panel p {
+    color: #e2e8f0;
+    margin: 0;
+}
+
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+/* İlerleme çubuğu rengi */
+.progress-bar {
+    background-color: #1e3a8a;
+}
+
+/* Sekme Navigasyonu */
+.tab-navigation {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 1rem;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    color: #e2e8f0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tab-btn:hover {
+    background: #f8f9fa;
+    color: #e2e8f0;
+}
+
+.tab-btn.active {
+    background: #1e3a8a;
+    color: #ffffff;
+}
+
+/* Sekme İçerikleri */
+.tab-content {
+    min-height: 500px;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Arama Bölümü */
+.search-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+}
+
+.search-box {
+    display: flex;
+    gap: 0.5rem;
+    flex: 1;
+    max-width: 600px;
+}
+
+.search-box .form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+}
+
+.search-box .btn {
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+}
+
+.view-options .btn-group {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.view-options .btn {
+    border-radius: 0;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+}
+
+/* Kitap Listesi */
+.book-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: rgba(15,23,42,0.6);
+    border-radius: 10px;
+    border: 1px solid rgba(226,232,240,0.12);
+}
+
+.book-list-header h4 {
+    margin: 0;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.list-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.book-table-container {
+    border: 1px solid rgba(226,232,240,0.12);
+    border-radius: 10px;
+    overflow: hidden;
+    max-height: 600px;
+    overflow-y: auto;
+    background: rgba(15,23,42,0.5);
+}
+
+.book-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.book-table th {
+    background: rgba(15,23,42,0.7);
+    padding: 1rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(226,232,240,0.12);
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.book-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(226,232,240,0.12);
+    vertical-align: middle;
+}
+
+.book-table tbody tr:hover {
+    background: rgba(102, 126, 234, 0.12);
+}
+
+/* Kart kapak gölgeleri */
+.book-cover {
+    width: 60px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid rgba(226, 232, 240, 0.2);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.book-info h6 {
+    color: #e2e8f0;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.book-info p {
+    color: #e2e8f0;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+/* Küçük vurgu renkleri */
+.book-info small { color: #0ea5e9; }
+
+.isbn-code {
+    background: rgba(15,23,42,0.5);
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(226,232,240,0.12);
+    font-family: monospace;
+    font-size: 0.9rem;
+    text-align: center;
+    color: #e2e8f0;
+}
+
+.location-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.location-badges .badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.status-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.status-badges .badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.action-buttons .btn {
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.book-list-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Panel İçerikleri */
+.panel-content {
+    padding: 2rem;
+    text-align: center;
+}
+
+.panel-content h4 {
+    color: #e2e8f0;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .kiosk-title {
+        font-size: 1.5rem;
+    }
+    
+    .kiosk-main {
+        padding: 1rem;
+    }
+    
+    .search-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-box {
+        max-width: none;
+    }
+    
+    .book-list-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .book-table-container {
+        font-size: 0.9rem;
+    }
+    
+    .book-table th,
+    .book-table td {
+        padding: 0.5rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+    }
+}
+
+/* Animasyonlar */
+@keyframes fadeIn {
+    from { opacity: 1; }
+    to { opacity: 1; }
+}
+
+.tab-pane.active {
+    animation: none;
+}
+
+/* Zoom desteği */
+@media (min-resolution: 2dppx) {
+    .kiosk-container {
+        font-size: 1.1rem;
+    }
+    
+    .book-cover {
+        width: 70px;
+        height: 90px;
+    }
+    
+    .btn {
+        padding: 0.875rem 1.25rem;
+    }
+}
+
+@media (min-resolution: 3dppx) {
+    .kiosk-container {
+        font-size: 1.2rem;
+    }
+    
+    .book-cover {
+        width: 80px;
+        height: 100px;
+    }
+}
+
+.transaction-card {
+    background: rgba(15,23,42,0.6);
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: center;
+    height: 100%;
+    border: 1px solid rgba(226,232,240,0.12);
+}
+
+.transaction-card h5 {
+    margin-bottom: 1rem;
+}
+
+.transaction-card .form-group {
+    margin-bottom: 1rem;
+}
+
+.qr-scanner-container {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 15px;
+}
+
+#transactionQRReader {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.requests-list {
+    background: rgba(15,23,42,0.6);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border: 1px solid rgba(226,232,240,0.12);
+}
+
+.requests-title {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.requests-info {
+    background: rgba(30,41,59,0.6);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border: 1px solid rgba(226,232,240,0.12);
+}
+
+.requests-info ol {
+    padding-left: 1.2rem;
+}
+
+/* Birincil Butonlar - Lacivert tema */
+.btn-primary {
+    background-color: #1e3a8a;
+    border-color: #1e3a8a;
+}
+
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+    background-color: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.btn-outline-primary { color: #93c5fd; border-color: #60a5fa; }
+.btn-outline-primary:hover { background:#1e3a8a; border-color:#1e3a8a; color:#fff; }
+
+.btn-check:checked+.btn-outline-primary,
+.btn-check:active+.btn-outline-primary,
+.btn-outline-primary:active,
+.btn-outline-primary.active {
+    color: #fff;
+    background-color: #1e3a8a;
+    border-color: #1e3a8a;
+}
+
+/* Profil Paneli Stilleri */
+.profile-card {
+    background: rgba(15,23,42,0.6);
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: center;
+    border: 1px solid rgba(226,232,240,0.12);
+}
+
+.profile-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    border: 4px solid white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.profile-info {
+    text-align: left;
+    margin-top: 1.5rem;
+}
+
+.profile-info div {
+    margin-bottom: 0.5rem;
+}
+
+.profile-books {
+    background: rgba(15,23,42,0.6);
+    border-radius: 15px;
+    padding: 2rem;
+    border: 1px solid rgba(226,232,240,0.12);
+}
+
+.book-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.book-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.book-item.overdue {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
+.book-cover-small {
+    width: 40px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.book-details {
+    flex: 1;
+}
+
+.book-details strong {
+    display: block;
+}
+
+.book-status .badge {
+    font-size: 0.8rem;
+}
+
+/* Liste/Kart arka planlarını koyu mavi yap */
+.book-list-header,
+.book-table th,
+.book-table-container,
+.transaction-card,
+.requests-list,
+.requests-info,
+.profile-card,
+.profile-books {
+    background: rgba(15, 23, 42, 0.6) !important;
+    border-color: rgba(226,232,240,0.12) !important;
+}
+
+/* Açık gri alanları mavi tonlara dönüştür */
+.book-table tbody tr:hover {
+    background: rgba(30, 58, 138, 0.15) !important;
+}
+
+/* Metin renkleri */
+.book-info h6, .book-info p, .book-table th, .status-panel h3, .status-panel p { color: #e2e8f0 !important; }
+.small, .text-muted { color: #a5b4fc !important; }
+
+/* Global animasyonları tamamen kaldır */
+*, *::before, *::after { 
+    transition: none !important; 
+    animation: none !important;
+    transform: none !important;
+}
+
+.tab-pane.active { 
+    animation: none !important; 
+    transform: none !important;
+}
+
+.tab-navigation, .book-table tbody tr { 
+    transition: none !important; 
+    transform: none !important;
+}
+
+/* Profil paneli sabitleyici */
+#profile-panel, 
+#profile-panel *, 
+.profile-card, 
+.profile-card *,
+#memberProfile,
+#memberProfile * {
+    position: static !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+}
+</style>
+
+<!-- JavaScript -->
+<script src="{{ url_for('static', filename='js/advanced-kiosk.js') }}"></script>
+<!-- İşlem Onay / Sonuç Modalları -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmModalTitle">İşlem Onayı</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body" id="confirmModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="button" class="btn btn-primary" id="confirmActionBtn">
+            <i class="bi bi-check-circle"></i> Onayla
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="resultModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="resultModalTitle">Sonuç</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body" id="resultModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Kiosk sistemi başlat
+$(document).ready(function() {
+    // advanced-kiosk.js dosyasındaki kioskSystem global değişkenini kullan
+    
+    // Sekme değiştirme
+    $('.tab-btn').on('click', function() {
+        const target = $(this).data('target');
+        
+        // Sekmeleri değiştir
+        $('.tab-btn').removeClass('active');
+        $(this).addClass('active');
+        $('.tab-pane').removeClass('active');
+        $('#' + target).addClass('active');
+        
+        // Belirli sekmelerde veri yükle
+        if (target === 'requests-panel' && window.kioskSystem && window.kioskSystem.currentMember) {
+            loadUserRequests();
+        }
+        if (target === 'profile-panel' && window.kioskSystem && window.kioskSystem.currentMember) {
+            window.kioskSystem.loadMemberProfile();
+        }
+        if (target === 'shelf-map-panel') {
+            loadShelfMap();
+        }
+    });
+    
+    // Kullanıcı talepleri yükleme
+    function loadUserRequests() {
+        if (!window.kioskSystem || !window.kioskSystem.currentMember) return;
+        
+        const memberId = window.kioskSystem.currentMember.id;
+        const sessionToken = window.kioskSystem.currentSession ? window.kioskSystem.currentSession.token : null;
+        
+        $.ajax({
+            url: `/api/kiosk/user-requests/${memberId}`,
+            method: 'GET',
+            data: { session_token: sessionToken },
+            success: function(response) {
+                if (response.success && response.requests) {
+                    let html = '';
+                    if (response.requests.length > 0) {
+                        response.requests.forEach(req => {
+                            const statusBadge = req.status === 'pending' ? 'bg-warning' :
+                                              req.status === 'approved' ? 'bg-success' :
+                                              req.status === 'rejected' ? 'bg-danger' : 'bg-secondary';
+                            
+                            html += `
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">${req.book_title}</h6>
+                                                <small class="text-muted">${req.book_authors}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge ${statusBadge}">${req.status}</span>
+                                                <small class="d-block text-muted">${req.created_at}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        html = '<p class="text-muted text-center">Henüz talebiniz yok</p>';
+                    }
+                    $('#user-requests-container').html(html);
+                }
+            },
+            error: function() {
+                $('#user-requests-container').html('<p class="text-danger">Talepler yüklenemedi</p>');
+            }
+        });
+    }
+    
+    // Kitap listesi yükleme (sayfalı ve raf/dolap ile)
+    function loadBookList(page = 1, perPage = 50) {
+        $.ajax({
+            url: '/api/books',
+            method: 'GET',
+            data: { page: page, per_page: perPage },
+            success: function(response) {
+                const books = response.books || [];
+                let html = '';
+                books.forEach(book => {
+                    const inStock = (typeof book.available === 'number') ? (book.available > 0) : !!book.available;
+                    const availableBadge = inStock ? '<span class="badge bg-success">Mevcut</span>' : '<span class="badge bg-warning">Ödünçte</span>';
+                    const shelf = book.shelf || 'Raf belirtilmemiş';
+                    const cupboard = book.cupboard || 'Dolap belirtilmemiş';
+                    html += `
+                        <tr>
+                            <td>
+                                <img src="${book.image_path || '/static/img/no_cover.png'}" alt="Kapak" class="book-cover">
+                            </td>
+                            <td>
+                                <div class="book-info">
+                                    <h6>${book.title}</h6>
+                                    <p>${book.authors || 'Yazar belirtilmemiş'}</p>
+                                    <small>${book.category || book.categories || 'Kategori yok'}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="isbn-code">${book.isbn}</div>
+                            </td>
+                            <td>
+                                <div class="location-badges">
+                                    <span class="badge bg-info">Raf: ${shelf}</span>
+                                    <span class="badge bg-secondary">Dolap: ${cupboard}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="status-badges">${availableBadge}</div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    ${inStock ? `<button class="btn btn-sm btn-primary" onclick=\"requestBook('${book.isbn}')\"><i class=\"bi bi-plus-circle\"></i> Talep</button>` : '<button class="btn btn-sm btn-secondary" disabled>Mevcut Değil</button>'}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                $('#bookListTableBody').html(html);
+                $('#bookListTotal').text(books.length);
+                $('#bookListInfo').text(`Toplam: ${books.length} kitap`);
+                // Sayfalama
+                const totalPages = response.pages || 1;
+                const currentPage = response.current_page || 1;
+                let paginationHtml = '';
+                for (let p = 1; p <= totalPages; p++) {
+                    paginationHtml += `<li class=\"page-item ${p === currentPage ? 'active' : ''}\"><a class=\"page-link\" href=\"#\" onclick=\"return goToBooksPage(${p});\">${p}</a></li>`;
+                }
+                $('#bookListPagination').html(paginationHtml);
+            },
+            error: function() {
+                $('#bookListTableBody').html(`<tr><td colspan="6" class="text-center py-4"><p class="text-danger">Kitap listesi yüklenemedi</p></td></tr>`);
+            }
+        });
+    }
+
+    window.goToBooksPage = function(p) { loadBookList(p, 50); return false; }
+
+    // Raf/Dolap haritası (veritabanından)
+    function loadShelfMap() {
+        const container = $('#kioskShelfMapContainer');
+        container.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="text-muted mt-2">Raf haritası yükleniyor...</p></div>');
+        $.ajax({
+            url: '/api/shelf-map',
+            method: 'GET',
+            success: function(resp) {
+                if (!resp || !resp.success) { container.html('<p class="text-danger text-center">Raf haritası yüklenemedi</p>'); return; }
+                const books = resp.books || [];
+                const grouped = {};
+                books.forEach(b => {
+                    const cup = b.cupboard || 'Diğer';
+                    const sh = b.shelf || 'Diğer';
+                    if (!grouped[cup]) grouped[cup] = {};
+                    if (!grouped[cup][sh]) grouped[cup][sh] = [];
+                    grouped[cup][sh].push(b);
+                });
+                let html = '';
+                Object.keys(grouped).forEach(cupboard => {
+                    html += `<div class=\"card mb-3\"><div class=\"card-body\"><h5 class=\"mb-3\"><i class=\"bi bi-archive\"></i> Dolap: ${cupboard}</h5>`;
+                    const shelves = grouped[cupboard];
+                    Object.keys(shelves).forEach(shelf => {
+                        html += `<div class=\"mb-2\"><div class=\"fw-bold mb-1\"><i class=\"bi bi-box\"></i> Raf: ${shelf}</div>`;
+                        html += '<div class=\"row g-2\">';
+                        shelves[shelf].forEach(item => {
+                            html += `<div class=\"col-sm-6 col-md-4 col-lg-3\"><div class=\"d-flex align-items-center p-2 bg-light rounded\"><img src=\"${item.image_url || '/static/img/no_cover.png'}\" alt=\"\" class=\"me-2\" style=\"width:32px;height:45px;object-fit:cover;border-radius:4px;\"><div class=\"small\"><div class=\"fw-semibold\">${item.title}</div><div class=\"text-muted\">${item.authors || ''}</div><div class=\"text-muted\">ISBN: ${item.isbn}</div></div></div></div>`;
+                        });
+                        html += '</div></div>';
+                    });
+                    html += '</div></div>';
+                });
+                if (!html) html = '<p class="text-muted text-center">Raf/dolap bilgisi bulunan kitap yok</p>';
+                container.html(html);
+            },
+            error: function() { container.html('<p class="text-danger text-center">Raf haritası yüklenemedi</p>'); }
+        });
+    }
+
+    // Sayfa yüklendiğinde kitap listesini yükle
+    loadBookList(1, 50);
+    
+    // Dışa aktar ve yenile yardımcıları
+    window.exportBookList = function() {
+        window.location.href = '/api/export/books';
+    };
+    window.refreshBookList = function() {
+        loadBookList();
+    };
+
+    // Kitap talep fonksiyonu
+    window.requestBook = function(isbn) {
+        if (!window.kioskSystem || !window.kioskSystem.currentMember) {
+            alert('Önce giriş yapmanız gerekiyor!');
+            return;
+        }
+        
+        // ISBN'yi input'a yaz ve talep oluştur
+        $('#borrowISBN').val(isbn);
+        $('#transactions-tab').click();
+    };
+});
+</script>
+{% endblock %}

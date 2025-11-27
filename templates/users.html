@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+
+{% block title %}Kullanıcı Yönetimi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-person-badge"></i> Kullanıcı Yönetimi
+            </h2>
+            
+            <!-- Yeni Kullanıcı Ekle -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-plus"></i> Yeni Kullanıcı Ekle
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="addUserForm" class="needs-validation" novalidate>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="username" class="form-label">Kullanıcı Adı</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                                <div class="invalid-feedback">Kullanıcı adı gerekli</div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="email" class="form-label">E-posta</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                                <div class="invalid-feedback">Geçerli bir e-posta adresi girin</div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="password" class="form-label">Şifre</label>
+                                <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                                <div class="invalid-feedback">Şifre en az 6 karakter olmalıdır</div>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="role" class="form-label">Rol</label>
+                                <select class="form-control" id="role" name="role">
+                                    <option value="user">Kullanıcı</option>
+                                    <option value="librarian">Kütüphaneci</option>
+                                    <option value="admin">Yönetici</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1 mb-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-plus"></i> Ekle
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Kullanıcı Listesi -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-people"></i> Kullanıcı Listesi
+                        </h5>
+                        <div>
+                            <span class="badge bg-secondary">Toplam: {{ users|length }} kullanıcı</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Kullanıcı Adı</th>
+                                    <th>E-posta</th>
+                                    <th>Rol</th>
+                                    <th>Kayıt Tarihi</th>
+                                    <th>Son Giriş</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr data-user-id="{{ user.id }}">
+                                    <td>{{ user.id }}</td>
+                                    <td>
+                                        {{ user.username }}
+                                        {% if user.id == current_user.id %}
+                                        <span class="badge bg-info">Ben</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if user.role == 'admin' else 'primary' if user.role == 'librarian' else 'secondary' }}">
+                                            {{ 'Yönetici' if user.role == 'admin' else 'Kütüphaneci' if user.role == 'librarian' else 'Kullanıcı' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ user.created_at.strftime('%d.%m.%Y') }}</td>
+                                    <td>
+                                        {% if user.last_login %}
+                                        {{ user.last_login.strftime('%d.%m.%Y %H:%M') }}
+                                        {% else %}
+                                        <span class="text-muted">Hiç giriş yapmadı</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                        <span class="badge bg-success">Aktif</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Pasif</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-outline-primary btn-edit-user" 
+                                                    data-user-id="{{ user.id }}" 
+                                                    data-username="{{ user.username }}"
+                                                    data-email="{{ user.email }}"
+                                                    data-role="{{ user.role }}"
+                                                    title="Düzenle">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            {% if user.id != current_user.id %}
+                                            <button class="btn btn-outline-warning btn-toggle-status" 
+                                                    data-user-id="{{ user.id }}"
+                                                    data-active="{{ user.is_active }}"
+                                                    title="{{ 'Pasifleştir' if user.is_active else 'Aktifleştir' }}">
+                                                <i class="bi bi-{{ 'lock' if user.is_active else 'unlock' }}"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-delete-user" 
+                                                    data-user-id="{{ user.id }}"
+                                                    data-username="{{ user.username }}"
+                                                    title="Sil">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                            <button class="btn btn-outline-info btn-view-activity" 
+                                                    data-user-id="{{ user.id }}"
+                                                    data-username="{{ user.username }}"
+                                                    title="Aktiviteler">
+                                                <i class="bi bi-clock-history"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- İstatistikler -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ users|selectattr("role", "equalto", "admin")|list|length }}</h3>
+                            <p class="mb-0">Yönetici</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ users|selectattr("role", "equalto", "librarian")|list|length }}</h3>
+                            <p class="mb-0">Kütüphaneci</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-secondary text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ users|selectattr("role", "equalto", "user")|list|length }}</h3>
+                            <p class="mb-0">Normal Kullanıcı</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ users|selectattr("is_active", "equalto", true)|list|length }}</h3>
+                            <p class="mb-0">Aktif Kullanıcı</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kullanıcı Düzenleme Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kullanıcı Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editUserForm" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" id="editUserId" name="user_id">
+                    <div class="mb-3">
+                        <label for="editUsername" class="form-label">Kullanıcı Adı</label>
+                        <input type="text" class="form-control" id="editUsername" name="username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEmail" class="form-label">E-posta</label>
+                        <input type="email" class="form-control" id="editEmail" name="email" required>
+                        <div class="invalid-feedback">Geçerli bir e-posta adresi girin</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRole" class="form-label">Rol</label>
+                        <select class="form-control" id="editRole" name="role">
+                            <option value="user">Kullanıcı</option>
+                            <option value="librarian">Kütüphaneci</option>
+                            <option value="admin">Yönetici</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPassword" class="form-label">Yeni Şifre (İsteğe bağlı)</label>
+                        <input type="password" class="form-control" id="editPassword" name="password" minlength="6">
+                        <small class="text-muted">Boş bırakırsanız şifre değişmez</small>
+                        <div class="invalid-feedback">Şifre en az 6 karakter olmalıdır</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Güncelle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Aktivite Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="activityModalLabel">Kullanıcı Aktiviteleri</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="activityContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Form submissions
+    $('#addUserForm').on('submit', handleAddUser);
+    $('#editUserForm').on('submit', handleEditUser);
+    
+    // Event delegation for user actions
+    $(document).on('click', '.btn-edit-user', function() {
+        const userData = {
+            id: $(this).data('user-id'),
+            username: $(this).data('username'),
+            email: $(this).data('email'),
+            role: $(this).data('role')
+        };
+        editUser(userData);
+    });
+    
+    $(document).on('click', '.btn-toggle-status', function() {
+        const userId = $(this).data('user-id');
+        const isActive = $(this).data('active');
+        toggleUserStatus(userId, isActive);
+    });
+    
+    $(document).on('click', '.btn-delete-user', function() {
+        const userId = $(this).data('user-id');
+        const username = $(this).data('username');
+        deleteUser(userId, username);
+    });
+    
+    $(document).on('click', '.btn-view-activity', function() {
+        const userId = $(this).data('user-id');
+        const username = $(this).data('username');
+        viewUserActivity(userId, username);
+    });
+    
+    // Initialize tooltips
+    $('[title]').tooltip();
+});
+
+// Add new user
+function handleAddUser(e) {
+    e.preventDefault();
+    
+    if (!this.checkValidity()) {
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    $.ajax({
+        url: '/api/users',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        beforeSend: function() {
+            LibraryApp.showLoading('Kullanıcı ekleniyor...');
+        },
+        success: function(result) {
+            LibraryApp.showToast('Kullanıcı başarıyla eklendi', 'success');
+            setTimeout(() => location.reload(), 1000);
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.message || 'Kullanıcı eklenemedi';
+            LibraryApp.showToast(error, 'error');
+        },
+        complete: function() {
+            LibraryApp.hideLoading();
+        }
+    });
+}
+
+// Edit user
+function editUser(userData) {
+    $('#editUserId').val(userData.id);
+    $('#editUsername').val(userData.username);
+    $('#editEmail').val(userData.email);
+    $('#editRole').val(userData.role);
+    $('#editPassword').val('');
+    
+    $('#editUserModal').modal('show');
+}
+
+// Handle edit user form
+function handleEditUser(e) {
+    e.preventDefault();
+    
+    if (!this.checkValidity()) {
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const userId = formData.get('user_id');
+    const data = Object.fromEntries(formData);
+    delete data.user_id;
+    
+    // Remove empty password
+    if (!data.password) {
+        delete data.password;
+    }
+    
+    $.ajax({
+        url: `/api/users/${userId}`,
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        beforeSend: function() {
+            LibraryApp.showLoading('Kullanıcı güncelleniyor...');
+        },
+        success: function(result) {
+            LibraryApp.showToast('Kullanıcı başarıyla güncellendi', 'success');
+            $('#editUserModal').modal('hide');
+            setTimeout(() => location.reload(), 1000);
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.message || 'Kullanıcı güncellenemedi';
+            LibraryApp.showToast(error, 'error');
+        },
+        complete: function() {
+            LibraryApp.hideLoading();
+        }
+    });
+}
+
+// Toggle user status
+function toggleUserStatus(userId, isActive) {
+    const action = isActive ? 'pasifleştirmek' : 'aktifleştirmek';
+    
+    LibraryApp.confirmDialog(
+        `Bu kullanıcıyı ${action} istediğinizden emin misiniz?`,
+        function() {
+            $.ajax({
+                url: `/api/users/${userId}/toggle-active`,
+                method: 'POST',
+                beforeSend: function() {
+                    LibraryApp.showLoading('Kullanıcı durumu değiştiriliyor...');
+                },
+                success: function(result) {
+                    const newStatus = result.is_active ? 'aktifleştirildi' : 'pasifleştirildi';
+                    LibraryApp.showToast(`Kullanıcı ${newStatus}`, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.message || 'İşlem başarısız';
+                    LibraryApp.showToast(error, 'error');
+                },
+                complete: function() {
+                    LibraryApp.hideLoading();
+                }
+            });
+        }
+    );
+}
+
+// Delete user
+function deleteUser(userId, username) {
+    LibraryApp.confirmDialog(
+        `"${username}" kullanıcısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+        function() {
+            $.ajax({
+                url: `/api/users/${userId}`,
+                method: 'DELETE',
+                beforeSend: function() {
+                    LibraryApp.showLoading('Kullanıcı siliniyor...');
+                },
+                success: function(result) {
+                    LibraryApp.showToast('Kullanıcı başarıyla silindi', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.message || 'Kullanıcı silinemedi';
+                    LibraryApp.showToast(error, 'error');
+                },
+                complete: function() {
+                    LibraryApp.hideLoading();
+                }
+            });
+        }
+    );
+}
+
+// View user activity
+function viewUserActivity(userId, username) {
+    $('#activityModalLabel').text(`${username} - Aktiviteler`);
+    $('#activityModal').modal('show');
+    
+    $.ajax({
+        url: `/api/users/${userId}/activity`,
+        method: 'GET',
+        beforeSend: function() {
+            $('#activityContent').html(`
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                </div>
+            `);
+        },
+        success: function(data) {
+            displayUserActivity(data.activities);
+        },
+        error: function() {
+            $('#activityContent').html(`
+                <div class="alert alert-danger text-center">
+                    Aktiviteler yüklenirken hata oluştu
+                </div>
+            `);
+        }
+    });
+}
+
+// Display user activity
+function displayUserActivity(activities) {
+    if (!activities || activities.length === 0) {
+        $('#activityContent').html(`
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i>
+                Henüz aktivite bulunamadı
+            </div>
+        `);
+        return;
+    }
+    
+    let content = `
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>İşlem</th>
+                        <th>Detay</th>
+                        <th>IP Adresi</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    activities.forEach(activity => {
+        const date = new Date(activity.timestamp);
+        const formattedDate = date.toLocaleString('tr-TR');
+        
+        content += `
+            <tr>
+                <td>${formattedDate}</td>
+                <td>
+                    <span class="badge bg-secondary">
+                        ${activity.action}
+                    </span>
+                </td>
+                <td>${activity.details || '-'}</td>
+                <td>
+                    <small class="text-muted font-monospace">
+                        ${activity.ip_address || '-'}
+                    </small>
+                </td>
+            </tr>
+        `;
+    });
+    
+    content += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    $('#activityContent').html(content);
+}
+</script>
+{% endblock %}

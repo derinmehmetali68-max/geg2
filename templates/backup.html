@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Yedekleme - Kütüphane Yönetim Sistemi{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2><i class="bi bi-hdd"></i> Yedekleme Yönetimi</h2>
+    <!-- Yeni butonlar başlangıç -->
+    <div class="mb-4 d-flex gap-3">
+        <button id="create-backup-btn" type="button" class="btn btn-success btn-lg">
+            <i class="bi bi-plus-circle"></i> Yeni Yedek Al
+        </button>
+        <div class="dropdown">
+            <button class="btn btn-warning btn-lg dropdown-toggle" type="button" id="restoreDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-arrow-clockwise"></i> Yedekten Geri Yükle
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="restoreDropdown">
+                {% for backup in backups %}
+                <li>
+                    <a class="dropdown-item restore-backup-dropdown" href="#" data-filename="{{ backup.filename }}">
+                        {{ backup.filename }} - {{ backup.created.strftime('%d.%m.%Y %H:%M') }}
+                    </a>
+                </li>
+                {% endfor %}
+                {% if not backups or backups|length == 0 %}
+                <li><span class="dropdown-item text-muted">Yedek yok</span></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    <!-- Yeni butonlar bitiş -->
+    <div class="card mt-4">
+        <ul class="nav nav-tabs" id="backupTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="backups-tab" data-bs-toggle="tab" data-bs-target="#backups" type="button" role="tab">Yedekler</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">İşlem Logları</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="backupTabsContent">
+            <div class="tab-pane fade show active" id="backups" role="tabpanel">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Mevcut Yedekler</span>
+                </div>
+                <div class="card-body">
+                    {% if backups and backups|length > 0 %}
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Dosya Adı</th>
+                                <th>Tarih</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for backup in backups %}
+                            <tr>
+                                <td>{{ backup.filename }}</td>
+                                <td>{{ backup.created.strftime('%d.%m.%Y %H:%M') }}</td>
+                                <td>
+                                    <a href="/api/backup/download/{{ backup.filename }}" class="btn btn-primary btn-sm" title="İndir">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-warning btn-sm restore-backup-btn" data-filename="{{ backup.filename }}" title="Geri Yükle">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm delete-backup-btn" data-filename="{{ backup.filename }}" title="Sil">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-info">Henüz hiç yedek alınmamış.</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="tab-pane fade" id="logs" role="tabpanel">
+                <div class="card-header">
+                    <span>İşlem Logları</span>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Kullanıcı</th>
+                                <th>İşlem</th>
+                                <th>Detay</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if backup_logs and backup_logs|length > 0 %}
+                            {% for log in backup_logs %}
+                            <tr>
+                                <td>{{ log.date }}</td>
+                                <td>{{ log.user }}</td>
+                                <td>{{ log.action }}</td>
+                                <td>{{ log.detail }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted">Henüz işlem kaydı yok.</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('.restore-backup-btn').on('click', function() {
+        const filename = $(this).data('filename');
+        if (confirm('Bu yedeği geri yüklemek istediğinize emin misiniz? Mevcut veriler kaybolacak!')) {
+            // Loading durumu göster
+            $(this).prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Yükleniyor...');
+            
+            $.ajax({
+                url: `/api/backup/restore/${filename}`,
+                method: 'POST',
+                timeout: 30000, // 30 saniye timeout
+                success: function(resp) {
+                    showToast(resp.message || 'Yedek başarıyla geri yüklendi', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Geri yükleme hatası';
+                    showToast(errorMsg, 'error');
+                    // Button'u eski haline getir
+                    $('.restore-backup-btn').prop('disabled', false).html('<i class="bi bi-arrow-clockwise"></i>');
+                }
+            });
+        }
+    });
+    
+    // Yeni: dropdown ile geri yükleme
+    $('.restore-backup-dropdown').on('click', function(e) {
+        e.preventDefault();
+        const filename = $(this).data('filename');
+        if (confirm('Bu yedeği geri yüklemek istediğinize emin misiniz? Mevcut veriler kaybolacak!')) {
+            $.ajax({
+                url: `/api/backup/restore/${filename}`,
+                method: 'POST',
+                timeout: 30000,
+                success: function(resp) {
+                    showToast(resp.message || 'Yedek başarıyla geri yüklendi', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Geri yükleme hatası';
+                    showToast(errorMsg, 'error');
+                }
+            });
+        }
+    });
+    // Yedek silme
+    $('.delete-backup-btn').on('click', function() {
+        const filename = $(this).data('filename');
+        if (confirm(`"${filename}" adlı yedeği kalıcı olarak silmek istediğinize emin misiniz?`)) {
+            // Loading durumu göster
+            $(this).prop('disabled', true).html('<i class="bi bi-hourglass-split"></i>');
+            
+            $.ajax({
+                url: `/api/backup/delete/${filename}`,
+                method: 'POST',
+                success: function(resp) {
+                    showToast(resp.message || 'Yedek silindi', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Silme hatası';
+                    showToast(errorMsg, 'error');
+                    // Button'u eski haline getir
+                    $('.delete-backup-btn').prop('disabled', false).html('<i class="bi bi-trash"></i>');
+                }
+            });
+        }
+    });
+    // Yeni Yedek Al butonu AJAX
+    $('#create-backup-btn').on('click', function() {
+        // Loading durumu göster
+        $(this).prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Yedek Alınıyor...');
+        
+        $.ajax({
+            url: '/api/backup/create',
+            method: 'POST',
+            timeout: 30000,
+            success: function(resp) {
+                showToast(resp.message || 'Yedekleme başarıyla oluşturuldu', 'success');
+                setTimeout(() => location.reload(), 1500);
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.message || 'Yedekleme hatası';
+                showToast(errorMsg, 'error');
+                // Button'u eski haline getir
+                $('#create-backup-btn').prop('disabled', false).html('<i class="bi bi-plus-circle"></i> Yeni Yedek Al');
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 
