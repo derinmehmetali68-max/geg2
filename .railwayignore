@@ -1,0 +1,52 @@
+# Railway ignore file - exclude large files from deployment
+# These files will be uploaded separately or generated on Railway
+
+# Large static files
+static/book_covers/
+static/qrcodes/
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Database files
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Uploads
+uploads/
+backups/
+reports/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test_isbn.csv
+
