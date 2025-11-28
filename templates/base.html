@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Kütüphane Yönetim Sistemi{% endblock %}</title>
+    <title>{% block title %}Cumhuriyet Anadolu Lisesi Kütüphanesi{% endblock %}</title>
     
     <!-- Bootstrap CSS - Yerel dosya yoksa CDN'den yükle -->
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" 
@@ -84,7 +84,7 @@
     <!-- Sidebar -->
     <div class="d-flex">
         <nav class="sidebar bg-white shadow-sm p-3">
-            <a class="navbar-brand mb-4 d-block text-center" href="{{ url_for('index') }}">
+            <a class="navbar-brand mb-4 d-block text-center" href="{{ url_for('index') }}" title="Cumhuriyet Anadolu Lisesi Kütüphanesi">
                 <i class="bi bi-book"></i> <span class="fw-bold">Kütüphane YBS</span>
             </a>
             <ul class="nav flex-column gap-2">
