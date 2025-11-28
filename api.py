@@ -2216,9 +2216,14 @@ def api_fetch_book_from_isbn():
     
     try:
         # Fetch book info from API
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Fetching book info for ISBN: {isbn}")
+        
         book_info = fetch_book_info_from_api(isbn)
         
         if not book_info:
+            logger.warning(f"No book info found for ISBN: {isbn}")
             return jsonify({'success': False, 'message': 'ISBN için bilgi bulunamadı'}), 404
         
         # Process language and categories if available
@@ -2257,7 +2262,16 @@ def api_fetch_book_from_isbn():
         })
         
     except Exception as e:
-        return jsonify({'success': False, 'message': f'API hatası: {str(e)}'}), 500
+        import logging
+        import traceback
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching book from ISBN {isbn}: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False, 
+            'message': f'API hatası: {str(e)}',
+            'isbn': isbn
+        }), 500
 
 @app.route('/api/books/get-all-isbns', methods=['GET'])
 def api_get_all_isbns():

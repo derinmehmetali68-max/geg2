@@ -319,12 +319,17 @@ def fetch_from_google_books(isbn):
         url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
         # SSL certificate verification disabled for PyInstaller executable compatibility
         import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if hasattr(sys, 'frozen'):
             # Running as PyInstaller executable
-            response = requests.get(url, verify=False, timeout=10)
+            response = requests.get(url, verify=False, timeout=15)
         else:
-            # Running normally
-            response = requests.get(url, timeout=10)
+            # Running normally (Railway production)
+            response = requests.get(url, timeout=15)
+        
+        response.raise_for_status()
         data = response.json()
         
         if data.get("totalItems", 0) > 0:
@@ -340,8 +345,16 @@ def fetch_from_google_books(isbn):
                 "description": item.get("description", ""),
                 "image_url": item.get("imageLinks", {}).get("thumbnail")
             }
-    except:
-        pass
+    except requests.exceptions.RequestException as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Google Books API Error for ISBN {isbn}: {e}")
+        print(f"Google Books API Error for ISBN {isbn}: {e}")
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Google Books API Unexpected Error for ISBN {isbn}: {e}")
+        print(f"Google Books API Unexpected Error for ISBN {isbn}: {e}")
     return None
 
 def fetch_from_openlibrary_for_cover(isbn):
@@ -349,12 +362,15 @@ def fetch_from_openlibrary_for_cover(isbn):
         url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
         # SSL certificate verification disabled for PyInstaller executable compatibility
         import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if hasattr(sys, 'frozen'):
             # Running as PyInstaller executable
-            response = requests.get(url, verify=False, timeout=10)
+            response = requests.get(url, verify=False, timeout=15)
         else:
-            # Running normally
-            response = requests.get(url, timeout=10)
+            # Running normally (Railway production)
+            response = requests.get(url, timeout=15)
         response.raise_for_status()
         data = response.json()
         key = f"ISBN:{isbn}"
@@ -362,8 +378,16 @@ def fetch_from_openlibrary_for_cover(isbn):
             book = data[key]
             image_url = book["cover"].get("large") or book["cover"].get("medium") or None
             return {"image_url": image_url}
+    except requests.exceptions.RequestException as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"OpenLibrary Cover API Error for ISBN {isbn}: {e}")
+        print(f"OpenLibrary Cover API Error for ISBN {isbn}: {e}")
     except Exception as e:
-        print(f"OpenLibrary Cover Error: {e}")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"OpenLibrary Cover API Unexpected Error for ISBN {isbn}: {e}")
+        print(f"OpenLibrary Cover API Unexpected Error for ISBN {isbn}: {e}")
     return None
 
 def fetch_from_openlibrary(isbn):
@@ -371,12 +395,15 @@ def fetch_from_openlibrary(isbn):
         url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
         # SSL certificate verification disabled for PyInstaller executable compatibility
         import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if hasattr(sys, 'frozen'):
             # Running as PyInstaller executable
-            response = requests.get(url, verify=False, timeout=10)
+            response = requests.get(url, verify=False, timeout=15)
         else:
-            # Running normally
-            response = requests.get(url, timeout=10)
+            # Running normally (Railway production)
+            response = requests.get(url, timeout=15)
         response.raise_for_status()
         data = response.json()
         key = f"ISBN:{isbn}"
@@ -445,8 +472,16 @@ def fetch_from_openlibrary(isbn):
                 image_url = book["cover"].get("large") or book["cover"].get("medium") or None
                 book_info["image_url"] = image_url
             return book_info
+    except requests.exceptions.RequestException as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"OpenLibrary API Error for ISBN {isbn}: {e}")
+        print(f"OpenLibrary API Error for ISBN {isbn}: {e}")
     except Exception as e:
-        print(f"OpenLibrary Error: {e}")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"OpenLibrary API Unexpected Error for ISBN {isbn}: {e}")
+        print(f"OpenLibrary API Unexpected Error for ISBN {isbn}: {e}")
     return None
 
 def add_notification(type, message, related_isbn=None):
