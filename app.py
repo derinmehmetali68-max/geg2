@@ -37,6 +37,14 @@ try:
 except ImportError:
     print("⚠️ Kiosk routes not available")
 
+# Clear database API endpoint
+try:
+    from api_clear_database import clear_db_bp
+    app.register_blueprint(clear_db_bp)
+    print("✅ Clear database API registered!")
+except ImportError:
+    print("⚠️ Clear database API not available")
+
 def main():
     """Ana uygulama fonksiyonu"""
     
