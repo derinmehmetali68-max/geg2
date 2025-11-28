@@ -1,7 +1,7 @@
 {
   "name": "Cumhuriyet Anadolu Lisesi Kütüphane Sistemi",
-  "short_name": "Cumhuriyet Kütüphanesi",
-  "description": "Modern kütüphane yönetim sistemi",
+  "short_name": "CAL Kütüphanesi",
+  "description": "Cumhuriyet Anadolu Lisesi modern kütüphane yönetim sistemi",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -59,7 +59,11 @@
       "purpose": "maskable any"
     }
   ],
-  "categories": ["education", "books", "library"],
+  "categories": [
+    "education",
+    "books",
+    "library"
+  ],
   "shortcuts": [
     {
       "name": "Kitap Ara",

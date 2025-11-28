@@ -128,3 +128,4 @@ RAILWAY_PUBLIC_DOMAIN=web-production-8d80.up.railway.app
 
 **🎉 Deployment başarıyla tamamlandı! Application çalışıyor!**
 
+
